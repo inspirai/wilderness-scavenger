@@ -271,6 +271,7 @@ class Game:
                  engine_dir="../unity3d",
                  server_port=50051):
         self.map_dir = map_dir
+        self.valid_locations = []
         self.unity_exec_path = os.path.join(engine_dir, "fps.x86_64")
         self.unity_log_name = f"game_server_port={server_port}"
         self.unity_log_dir = os.path.join(engine_dir, "logs")
@@ -350,6 +351,7 @@ class Game:
 
     def set_map_id(self, map_id: int):
         assert isinstance(map_id, int) and 1 <= map_id <= 100
+        self.valid_locations = load_json(f"{self.map_dir}/{map_id:03d}.json")
         self.GM.map_id = map_id
 
     def set_random_seed(self, random_seed: int):
