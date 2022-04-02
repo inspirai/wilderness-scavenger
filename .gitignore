@@ -1,0 +1,3 @@
+unity3d/logs/*
+data/
+*.pyc

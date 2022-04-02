@@ -1,0 +1,1 @@
+from inspirai_fps.gamecore import *
