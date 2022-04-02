@@ -4,12 +4,10 @@ This is a platform for intelligent agent learning based on a 3D open-world FPS g
 
 ## Competition Overview
 
----
 Focusing on open-world FPS game AI, this year we are hosting a new competition called 3D Open World FPS AI Challenge. Featuring a battle royale-style 3D open environment and random PCG-based world generation, this new game will challenge AI agents to some of the most important skills in FPS games, such as navigation, scouting, and skirmishing. To win the competition, agents need to have a strong perception of complex 3D environments, then learn to exploit various environmental structures (such as terrain, buildings, and plants) and develop highly flexible strategies to gain an advantage over competitors. Although the problem is difficult, we hope that this new competition will become a cornerstone of future AI research in open-world FPS games.
 
 ## Features
 
----
 
 - A light-weight 3D open-world FPS game developed with Unity3D game engine
 - rendering-off game acceleration for fast training and evaluation
@@ -19,7 +17,6 @@ Focusing on open-world FPS game AI, this year we are hosting a new competition c
 
 ## Basic Structures
 
----
 We developed this repository to provide a training and evaluation platform for the researchers interested in open-world FPS game AI. For getting started quickly, we summarize the basic structure of this repository as follows:
 
 ```bash
