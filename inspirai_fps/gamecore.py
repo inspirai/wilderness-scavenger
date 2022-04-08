@@ -59,7 +59,6 @@ class StateVariable:
     IS_RELOAD = "is_reload"
     HIT_ENEMY = "hit_enemy"
     HIT_BY_ENEMY = "hit_by_enemy"
-    CAN_PICKUP = "can_pickup"
     NUM_SUPPLY = "num_supply"
     TARGET_LOCATION = "target_location"
 
@@ -128,9 +127,12 @@ class EnemyStateRough:
         self_pos_z = obs_data.location.z
         enemy_pos_x = enemy_info.location.x
         enemy_pos_z = enemy_info.location.z
-        self.dir_vec = np.asarray(
-            [enemy_pos_x - self_pos_x, enemy_pos_z - self_pos_z])
-        self.dir_vec /= np.linalg.norm(self.dir_vec)
+
+        dx = enemy_pos_x - self_pos_x
+        dz = enemy_pos_z - self_pos_z
+        dir_vec = np.asarray([dx, dz])
+
+        self.dir_vec = dir_vec / np.linalg.norm(self.dir_vec)
 
     def __reduce__(self) -> str or Tuple[Any, ...]:
         return f"EnemyStateDirOnly_EnemyDir({self.dir_vec.tolist()})"
