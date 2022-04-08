@@ -1,3 +1,5 @@
-unity3d/logs/*
+*.log
 data/*
 *.pyc
+unity3d/fps_Data/StreamingAssets/*
+inspirai_fps.egg-info/*
