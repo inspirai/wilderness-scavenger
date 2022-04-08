@@ -8,11 +8,10 @@ Focusing on open-world FPS game AI, this year we are hosting a new competition c
 
 ## Features
 
-
 - A light-weight 3D open-world FPS game developed with Unity3D game engine
 - rendering-off game acceleration for fast training and evaluation
-- large open world environment providing high freedom of the player's exploration
-- PCG-based terrain generation with randomly spawned buildings, plants and obstacles
+- large open world environment providing high freedom of game play strategies
+- PCG-based map generation with randomly spawned buildings, plants and obstacles
 - 100 scenario maps for generalized AI training
 
 ## Basic Structures
@@ -52,7 +51,7 @@ We developed this repository to provide a training and evaluation platform for t
 
 - `unity3d`: the engine backend extracted from our game development project, containing all the game related assets, binaries and source codes.
 - `inspirai_fps`: the game playing python APIs for agent learning, providing the core [`Game`](inspirai_fps/gamecore.py) class and other useful tool classes and functions.
-- `data`: storing all map related data files and they are used for calculating some observation attributes in the [`AgentState`](inspirai_fps/gamecore.py).
+- `data`: storing all map related data files and they are used for calculating some state information in the [`AgentState`](inspirai_fps/gamecore.py).
 - `examples`: we provide basic starter codes for each game mode targeting each track of the challenge, and we also give out our implementation of some baseline solutions based on [`ray.rllib`](https://docs.ray.io/en/master/rllib/index.html) reinforcement learning framework.
 
 ## Installation

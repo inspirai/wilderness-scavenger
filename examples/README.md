@@ -1,4 +1,4 @@
-# Getting started with inspirai_fps API
+# Quick start: the python game play interface
 
 Here we provide some example python scripts, which may help you get familiar with the basic use of our environment quickly and possibly build your own AI training environment based on the provided game play interfaces. To run the scripts, here are some example shell commands for your reference:
 
