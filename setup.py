@@ -23,7 +23,7 @@ setup(
     packages=["inspirai_fps"],
     python_requires=">=3.8, <4",
     package_data={"inspirai_fps": package_data},
-    install_requires=["Pillow", "numpy", "grpcio", "rich", "protobuf", "trimesh"],
+    install_requires=["Pillow", "numpy", "grpcio", "rich", "protobuf", "trimesh", "gym"],
     keywords=["inspirai", "fps", "game", "open world", "ai", "deep learning", "reinforcement learning", "research"],
     license="LICENSE",
 )
