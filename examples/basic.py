@@ -6,6 +6,7 @@ import numpy as np
 
 from rich.progress import track
 from rich.console import Console
+
 console = Console()
 
 from inspirai_fps import Game, ActionVariable
@@ -29,31 +30,26 @@ parser.add_argument("--record", action="store_true")
 parser.add_argument("--replay-suffix", type=str, default="")
 parser.add_argument("--start-location", type=float, nargs=3, default=[0, 0, 0])
 parser.add_argument("--target-location", type=float, nargs=3, default=[5, 0, 5])
-parser.add_argument("--walk-speed", type=float, default=1)
 args = parser.parse_args()
 
 
-def get_pitch_yaw(x, y, z):
-    pitch = np.arctan2(y, (x**2 + z**2)**0.5) / np.pi * 180
-    yaw = np.arctan2(x, z) / np.pi * 180
-    return pitch, yaw
-
-
-def my_policy(state):  #  currently same as simple navigation policy
-    self_pos = [state.position_x, state.position_y, state.position_z]
-    target_pos = args.target_location
-    direction = [v2 - v1 for v1, v2 in zip(self_pos, target_pos)]
-    yaw = get_pitch_yaw(*direction)[1]
-    turn_lr_delta = random.choice([1, 0, -1])
-    action = [yaw, args.walk_speed, turn_lr_delta, True]
-    return action
+def my_policy(state):
+    """Define a random policy"""
+    return [
+        random.randint(0, 360),  # walk_dir
+        random.randint(1, 10),  # walk_speed
+        random.choice([-1, 0, 1]),  # turn_lr_delta
+        random.choice([-1, 0, 1]),  # turn_ud_delta
+        random.random() > 0.5,  # jump
+    ]
 
 
 used_actions = [
     ActionVariable.WALK_DIR,
     ActionVariable.WALK_SPEED,
     ActionVariable.TURN_LR_DELTA,
-    ActionVariable.PICKUP,
+    ActionVariable.LOOK_UD_DELTA,
+    ActionVariable.JUMP,
 ]
 
 game = Game(map_dir=args.map_dir, engine_dir=args.engine_dir, server_port=args.port)
@@ -105,10 +101,7 @@ for ep in track(range(args.num_rounds), description="Running Episodes ..."):
             "TimeStep": state.time_step,
             "AgentID": agent_id,
             "Location": get_position(state),
-            "Action": {
-                name: val
-                for name, val in zip(used_actions, action_all[agent_id])
-            },
+            "Action": {name: val for name, val in zip(used_actions, action_all[agent_id])},
             "#SupplyInfo": len(state.supply_states),
             "#EnemyInfo": len(state.enemy_states),
             "StepRate": round(1 / dt),

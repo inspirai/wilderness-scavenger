@@ -8,6 +8,8 @@ from queue import Queue
 from concurrent import futures
 from typing import List, Tuple, Any
 
+from google.protobuf.json_format import MessageToDict
+
 from inspirai_fps import simple_command_pb2
 from inspirai_fps import simple_command_pb2_grpc
 from inspirai_fps.raycast import RaycastManager
@@ -23,7 +25,6 @@ print_server_log = False
 
 
 class QueueServer(simple_command_pb2_grpc.CommanderServicer):
-
     def __init__(self, request_queue, reply_queue) -> None:
         super().__init__()
         self.request_queue = request_queue
@@ -47,20 +48,21 @@ class QueueServer(simple_command_pb2_grpc.CommanderServicer):
 
 class StateVariable:
     LOCATION = "location"
-    PITCH = "pitch"
-    YAW = "yaw"
     MOVE_DIR = "move_dir"
     MOVE_SPEED = "move_speed"
+    CAMERA_DIR = "camera_dir"
     HEALTH = "hp"
     WEAPON_AMMO = "num_gun_ammo"
     SPARE_AMMO = "num_pack_ammo"
-    IS_JUMP = "is_jump"
-    IS_FIRE = "is_fire"
-    IS_RELOAD = "is_reload"
+    ON_GROUND = "on_ground"
+    IS_ATTACKING = "is_attack"
+    IS_RELOADING = "is_reload"
     HIT_ENEMY = "hit_enemy"
     HIT_BY_ENEMY = "hit_by_enemy"
     NUM_SUPPLY = "num_supply"
     TARGET_LOCATION = "target_location"
+    IS_WAITING_RESPAWN = "is_waiting_respawn"
+    IS_INVISIBLE = "is_invisible"
 
 
 class ActionVariable:
@@ -121,8 +123,7 @@ class EnemyStateRough:
     - dir_vec: a 2d unit vector pointing from the agent's location to the enemy's location
     """
 
-    def __init__(self, enemy_info: simple_command_pb2.EnemyInfo,
-                 obs_data: simple_command_pb2.Observation) -> None:
+    def __init__(self, enemy_info: simple_command_pb2.EnemyInfo, obs_data: simple_command_pb2.Observation) -> None:
         self_pos_x = obs_data.location.x
         self_pos_z = obs_data.location.z
         enemy_pos_x = enemy_info.location.x
@@ -162,13 +163,7 @@ class AgentState:
     - depth_map `Iterable[Iterable[float]]`: an H x W array representing the depth of mesh point in the agent's visual-sight window (if turned off this is `None`)
     """
 
-    def __init__(self,
-                 obs_data,
-                 time_step,
-                 game_state,
-                 ray_tracer,
-                 use_depth_map=False,
-                 supply_visible_distance=np.Inf) -> None:
+    def __init__(self, obs_data, time_step, game_state, ray_tracer, use_depth_map=False, supply_visible_distance=np.Inf) -> None:
 
         self.ray_tracer = ray_tracer
         self.supply_visible_distance = supply_visible_distance
@@ -202,14 +197,8 @@ class AgentState:
             dir = get_orientation(self)
             self.depth_map = self.ray_tracer.get_depth(pos, dir)[0]
 
-        self.supply_states = [
-            SupplyState(s)
-            for s in filter(self.is_supply_visible, obs_data.supply_info_list)
-        ]
-        self.enemy_states = [
-            EnemyStateDetailed(e)
-            for e in filter(self.is_enemy_visible, obs_data.enemy_info_list)
-        ]
+        self.supply_states = [SupplyState(s) for s in filter(self.is_supply_visible, obs_data.supply_info_list)]
+        self.enemy_states = [EnemyStateDetailed(e) for e in filter(self.is_enemy_visible, obs_data.enemy_info_list)]
 
     def __repr__(self) -> str:
         x = self.position_x
@@ -248,13 +237,9 @@ class AgentState:
             0,  # default 0 -> of no use
         ]
 
-        is_visiable = self.ray_tracer.agent_is_visible(body_param, view_angle,
-                                                       agent_team_id,
-                                                       agent_position,
-                                                       camera_location,
-                                                       camerarotation)
+        is_visible = self.ray_tracer.agent_is_visible(body_param, view_angle, agent_team_id, agent_position, camera_location, camerarotation)
 
-        return is_visiable[0][1]
+        return is_visible[0][1]
 
     def is_supply_visible(self, supply_info: simple_command_pb2.SupplyInfo):
         supply_pos = vector3d_to_list(supply_info.supply_location)
@@ -268,10 +253,7 @@ class Game:
     MODE_SUP_GATHER = simple_command_pb2.GameModeType.SUP_GATHER_MODE
     MODE_SUP_BATTLE = simple_command_pb2.GameModeType.SUP_BATTLE_MODE
 
-    def __init__(self,
-                 map_dir="../map_data",
-                 engine_dir="../unity3d",
-                 server_port=50051):
+    def __init__(self, map_dir="../map_data", engine_dir="../unity3d", server_port=50051):
         self.map_dir = map_dir
         self.valid_locations = []
         self.unity_exec_path = os.path.join(engine_dir, "fps.x86_64")
@@ -281,9 +263,9 @@ class Game:
         self.server_port = server_port
         self.available_actions = []
         self.use_depth_map = False
-        self.GM = self.get_default_game_config()
+        self.GM = self.__get_default_GM()
 
-    def get_default_game_config(self):
+    def __get_default_GM(self):
         gm_command = simple_command_pb2.GMCommand()
 
         # Common settings
@@ -327,12 +309,13 @@ class Game:
         return gm_command
 
     def set_game_config(self, config_path: str):
+        """ Experimental: Set game config from a yaml file """
         game_config = load_json(config_path)
         self.GM.Clear()
         set_GM_command(self.GM, game_config)
 
     def get_game_config(self):
-        return self.GM
+        return MessageToDict(self.GM)
 
     def get_agent_name(self, agent_id):
         for agent in self.GM.agent_setups:
@@ -379,10 +362,7 @@ class Game:
     def set_available_actions(self, actions: List[str]):
         assert isinstance(actions, list) and len(actions) >= 1
         self.available_actions = actions
-        self.action_idx_map = {
-            key: i
-            for i, key in enumerate(self.available_actions)
-        }
+        self.action_idx_map = {key: i for i, key in enumerate(self.available_actions)}
 
     def set_trigger_range(self, trigger_range: float):
         assert isinstance(trigger_range, (float, int)) and trigger_range > 0.5
@@ -426,9 +406,7 @@ class Game:
         self.GM.supply_house_random_min = qmin
         self.GM.supply_house_random_max = qmax
 
-    def add_supply_refresh(self, refresh_time: int, heatmap_radius: int,
-                           heatmap_center: List[float], indoor_richness: int,
-                           outdoor_richness: int):
+    def add_supply_refresh(self, refresh_time: int, heatmap_radius: int, heatmap_center: List[float], indoor_richness: int, outdoor_richness: int):
         assert isinstance(refresh_time, int) and refresh_time >= 1
         assert isinstance(heatmap_radius, int) and 1 <= heatmap_radius <= 200
         assert isinstance(heatmap_center, list) and len(heatmap_center) == 2
@@ -436,7 +414,7 @@ class Game:
         assert -150 <= heatmap_center[1] <= 150
         assert isinstance(indoor_richness, int) and 0 <= indoor_richness <= 100
         assert isinstance(outdoor_richness, int) and 0 <= outdoor_richness <= 50
-        
+
         refresh = self.GM.supply_refresh_datas.add()
         center = [heatmap_center[0], 0, heatmap_center[1]]
         set_vector3d(refresh.supply_heatmap_center, center)
@@ -445,25 +423,19 @@ class Game:
         refresh.supply_create_percent = outdoor_richness
         refresh.supply_house_create_percent = indoor_richness
 
-    def add_agent(self,
-                  health=100,
-                  num_pack_ammo=60,
-                  num_clip_ammo=15,
-                  attack=20,
-                  start_location=[0, 0, 0],
-                  agent_name=None):
+    def add_agent(self, health=100, num_pack_ammo=60, num_clip_ammo=15, attack=20, start_location=[0, 0, 0], agent_name=None):
         assert isinstance(start_location, list) and len(start_location) == 3
         assert isinstance(health, int) and 1 <= health <= 100
         assert isinstance(num_clip_ammo, int) and num_clip_ammo >= 0
         assert isinstance(num_pack_ammo, int) and num_pack_ammo >= 0
         assert isinstance(attack, int) and attack >= 1
-        
+
         agent = self.GM.agent_setups.add()
         agent.id = self.GM.num_agents
-        agent_name = agent_name or f"Agent-{agent.id}" 
+        agent_name = agent_name or f"Agent-{agent.id}"
         assert isinstance(agent_name, str) and len(agent_name) > 0
         agent.agent_name = agent_name
-        
+
         agent.hp = health
         agent.num_pack_ammo = num_pack_ammo
         agent.gun_capacity = num_clip_ammo
@@ -480,6 +452,7 @@ class Game:
 
     def turn_on_depth_map(self):
         self.use_depth_map = True
+
 
     def turn_off_depth_map(self):
         self.use_depth_map = False
@@ -500,9 +473,8 @@ class Game:
 
         # initialize message queue server
         self.server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-        simple_command_pb2_grpc.add_CommanderServicer_to_server(
-            QueueServer(self.request_queue, self.reply_queue), self.server)
-        self.server.add_insecure_port(f'[::]:{self.server_port}')
+        simple_command_pb2_grpc.add_CommanderServicer_to_server(QueueServer(self.request_queue, self.reply_queue), self.server)
+        self.server.add_insecure_port(f"[::]:{self.server_port}")
         self.server.start()
         print("Server started ...")
 
@@ -523,9 +495,7 @@ class Game:
     def get_state(self, agent_id=0):
         for obs_data in self.latest_request.agent_obs_list:
             if obs_data.id == agent_id:
-                return AgentState(obs_data, self.latest_request.time_step,
-                                 self.latest_request.game_state,
-                                 self.ray_tracer, self.use_depth_map)
+                return AgentState(obs_data, self.latest_request.time_step, self.latest_request.game_state, self.ray_tracer, self.use_depth_map)
 
     def get_state_all(self):
         state_dict = {}
@@ -534,15 +504,16 @@ class Game:
 
         for obs_data in self.latest_request.agent_obs_list:
             agent_id = obs_data.id
-            state_dict[agent_id] = AgentState(obs_data, time_step, game_state,
-                                             self.ray_tracer,
-                                             self.use_depth_map)
+            state_dict[agent_id] = AgentState(obs_data, time_step, game_state, self.ray_tracer, self.use_depth_map)
         return state_dict
 
     def make_action(self, action_cmd_dict):
         """
-        action: list of action variable values
-        >>> action = [30, 2, True, False]  # (WALK_DIR, WALK_SPEED, JUMP, FIRE)
+        Parameters
+        ----------
+        `action_cmd_dict`: dict of {`agent_id`: `action`}
+        `action`: list of action variable values
+        >>> {0: [30, 2, True, False]}  # (WALK_DIR, WALK_SPEED, JUMP, FIRE)
         """
         reply = simple_command_pb2.A2S_Reply_Data()
         reply.game_state = simple_command_pb2.GameState.update
@@ -581,8 +552,7 @@ class Game:
         self.server.stop(0)
         print("Server stopped ...")
 
-        cmd = "ps -ef | grep fps.x86_64 | grep PORT:" + str(
-            self.server_port) + " | awk '{print $2}' | xargs kill -9"
+        cmd = "ps -ef | grep fps.x86_64 | grep PORT:" + str(self.server_port) + " | awk '{print $2}' | xargs kill -9"
         os.system(cmd)
         print("Unity3D stopped ...")
 
@@ -591,6 +561,7 @@ if __name__ == "__main__":
     import argparse
     from rich.console import Console
     from rich.progress import track
+
     console = Console()
 
     parser = argparse.ArgumentParser()
@@ -606,19 +577,13 @@ if __name__ == "__main__":
     parser.add_argument("--use-depth-map", action="store_true")
     parser.add_argument("--record", action="store_true")
     parser.add_argument("--replay-suffix", type=str, default="")
-    parser.add_argument("--start-location",
-                        type=float,
-                        nargs=3,
-                        default=[0, 0, 0])
-    parser.add_argument("--target-location",
-                        type=float,
-                        nargs=3,
-                        default=[5, 0, 5])
+    parser.add_argument("--start-location", type=float, nargs=3, default=[0, 0, 0])
+    parser.add_argument("--target-location", type=float, nargs=3, default=[5, 0, 5])
     parser.add_argument("--walk-speed", type=float, default=1)
     args = parser.parse_args()
 
     def get_picth_yaw(x, y, z):
-        pitch = np.arctan2(y, (x**2 + z**2)**0.5) / np.pi * 180
+        pitch = np.arctan2(y, (x**2 + z**2) ** 0.5) / np.pi * 180
         yaw = np.arctan2(x, z) / np.pi * 180
         return pitch, yaw
 
@@ -684,10 +649,7 @@ if __name__ == "__main__":
                 "TimeStep": state.time_step,
                 "AgentID": agent_id,
                 "Location": get_position(state),
-                "Action": {
-                    name: val
-                    for name, val in zip(used_actions, action_all[agent_id])
-                },
+                "Action": {name: val for name, val in zip(used_actions, action_all[agent_id])},
                 "#SupplyInfo": len(state.supply_states),
                 "#EnemyInfo": len(state.enemy_states),
                 "StepRate": round(1 / dt),

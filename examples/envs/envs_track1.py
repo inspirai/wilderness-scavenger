@@ -70,7 +70,7 @@ class NavigationBaseEnv(BaseEnv):
 
     def step(self, action):
         action_cmd = self._action_process(action)
-        self.game.make_action(action_cmd)
+        self.game.make_action({0: action_cmd})
         self.state = self.game.get_state()
         done = self.game.is_episode_finished()
         reward = 0
