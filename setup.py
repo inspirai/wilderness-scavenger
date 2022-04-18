@@ -8,12 +8,12 @@ here = pathlib.Path(__file__).parent.resolve()
 long_description = (here / "README.md").read_text(encoding="utf-8")
 
 # non-python data that needs to be installed along with the main python modules
-package_data = ['__init__.py', "lib/*"]
+package_data = ["__init__.py", "lib/*"]
 
 
 setup(
     name="inspirai_fps",
-    version="1.0.0",
+    version="0.0.1",
     author="Inspir.AI",
     author_email="cog2022@inspirai.com",
     url="https://github.com/inspirai/wilderness-scavenger",
@@ -23,7 +23,17 @@ setup(
     packages=["inspirai_fps"],
     python_requires=">=3.8, <4",
     package_data={"inspirai_fps": package_data},
-    install_requires=["Pillow", "numpy", "grpcio", "rich", "protobuf", "trimesh", "gym"],
-    keywords=["inspirai", "fps", "game", "open world", "ai", "deep learning", "reinforcement learning", "research"],
+    install_requires=["Pillow", "numpy", "grpcio", "rich", "protobuf", "trimesh"],
+    extras_require={"baseline": ["gym", "ray[rllib]", "torch"]},
+    keywords=[
+        "inspirai",
+        "fps",
+        "game",
+        "open world",
+        "ai",
+        "deep learning",
+        "reinforcement learning",
+        "research",
+    ],
     license="LICENSE",
 )

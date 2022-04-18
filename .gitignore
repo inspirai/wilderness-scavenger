@@ -3,3 +3,6 @@ data/*
 *.pyc
 unity3d/fps_Data/StreamingAssets/*
 inspirai_fps.egg-info/*
+*.txt
+.vscode/*
+dist/*
