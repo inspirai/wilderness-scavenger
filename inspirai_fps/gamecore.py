@@ -60,7 +60,6 @@ class StateVariable:
     HIT_ENEMY = "hit_enemy"
     HIT_BY_ENEMY = "hit_by_enemy"
     NUM_SUPPLY = "num_supply"
-    TARGET_LOCATION = "target_location"
     IS_WAITING_RESPAWN = "is_waiting_respawn"
     IS_INVISIBLE = "is_invisible"
 
@@ -168,8 +167,8 @@ class AgentState:
         self.ray_tracer = ray_tracer
         self.supply_visible_distance = supply_visible_distance
 
-        self.time_step = time_step
-        self.game_state = game_state
+        self.time_step = time_step  # TODO: remove this
+        self.game_state = game_state  # TODO: remove this
         self.position_x = obs_data.location.x
         self.position_y = obs_data.location.y
         self.position_z = obs_data.location.z
@@ -309,7 +308,7 @@ class Game:
         return gm_command
 
     def set_game_config(self, config_path: str):
-        """ Experimental: Set game config from a yaml file """
+        """Experimental: Set game config from a yaml file"""
         game_config = load_json(config_path)
         self.GM.Clear()
         set_GM_command(self.GM, game_config)
@@ -331,6 +330,7 @@ class Game:
         self.GM.game_mode = game_mode
 
     def set_time_scale(self, time_scale: int):
+        """TODO: hide this function from user"""
         assert isinstance(time_scale, int) and time_scale >= 1
         self.GM.time_scale = time_scale
 
@@ -359,12 +359,17 @@ class Game:
         assert isinstance(loc, list) and len(loc) == 3
         set_vector3d(self.GM.target_location, loc)
 
+    def get_target_location(self):
+        loc = self.GM.target_location
+        return loc.x, loc.y, loc.z
+
     def set_available_actions(self, actions: List[str]):
         assert isinstance(actions, list) and len(actions) >= 1
         self.available_actions = actions
         self.action_idx_map = {key: i for i, key in enumerate(self.available_actions)}
 
     def set_trigger_range(self, trigger_range: float):
+        """TODO: hide this function from user"""
         assert isinstance(trigger_range, (float, int)) and trigger_range > 0.5
         self.GM.trigger_range = float(trigger_range)
 
@@ -453,18 +458,26 @@ class Game:
     def turn_on_depth_map(self):
         self.use_depth_map = True
 
-
     def turn_off_depth_map(self):
         self.use_depth_map = False
 
     def get_depth_map_height(self):
+        """deprecated: use get_depth_map_size instead"""
         return RaycastManager.HEIGHT
 
     def get_depth_map_width(self):
+        """deprecated: use get_depth_map_size instead"""
         return RaycastManager.WIDTH
 
     def get_depth_limit(self):
+        """deprecated: use get_depth_map_size instead"""
         return RaycastManager.DEPTH
+
+    def get_depth_map_size(self):
+        return RaycastManager.WIDTH, RaycastManager.HEIGHT, RaycastManager.DEPTH
+
+    def get_frame_count(self):
+        return self.latest_request.time_step
 
     def init(self):
         assert len(self.available_actions) > 0

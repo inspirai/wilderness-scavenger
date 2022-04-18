@@ -1,6 +1,6 @@
 # Python Game Play Interface
 
-## Agent Action Variables
+## Agent Action Variable
 
 - `ActionVariable.WALK_DIR`: the walking direction of the agent
 - `ActionVariable.WALK_SPEED`: the walking speed of the agent
@@ -11,7 +11,7 @@
 - `ActionVariable.RELOAD`: the weapon clip reloading action of the agent
 - `ActionVariable.PICKUP`: the action of the agent to pick up a supply
 
-## Agent State Variables
+## Agent State Variable
 
 - `StateVariable.LOCATION`: the location of the agent
   - `position_x`: the x coordinate value of the agent's location
@@ -33,14 +33,10 @@
 - `HIT_ENEMY`: whether the agent hit an enemy
 - `HIT_BY_ENEMY`: whether the agent is hit by an enemy
 - `NUM_SUPPLIES`: the number of supplies collected by the agent
-- `TARGET_LOCATION`: the location of the agent's target
-  - `position_x`: the x coordinate value of the target location
-  - `position_y`: the y coordinate value of the target location (vertical height)
-  - `position_z`: the z coordinate value of the target location
 - `IS_WAITING_RESPAWN`: whether the agent is waiting for respawn
 - `IS_INVINCIBLE`: whether the agent is invincible
 
-## Game Modes
+## Game Mode
 
 - `Game.MODE_NAVIGATION`: the track 1 mode identifier
 - `Game.MODE_SUP_GATHER`: the track 2 mode identifier
@@ -88,8 +84,14 @@ Users can change the game configuration by using the following methods and the n
 
 - `Game.init`: initialize the game server and pull up the backend game engine to connect to the game server
 - `Game.new_episode`: start a new episode of the game with all agent and game states reset to the initial ones
-- `Game.make_action`: send actions of agents (in `dict`) from the game server to the backend game engine
+- `Game.make_action`: send actions of agents (in `dict[int, list]`) from the game server to the backend game engine
 - `Game.get_state`: get the agent state (by id) from the backend game engine
-- `Game.get_state_all`: get all agent states (as `dict`) from the backend game engine
+- `Game.get_state_all`: get all agent states (as `dict[int, AgentState]`) from the backend game engine
 - `Game.is_episode_finished`: check whether the current running episode is finished
 - `Game.close`: close the game server and shutdown the backend game engine
+
+## Global Variable
+
+- `Game.get_target_location`: get the target location (as `Tuple[float, float, float]`) of the Navigation mode
+- `Game.get_frame_count`: get the frame count of the current running episode
+- `Game.get_depth_map_size`: get the (width, height, max_depth) of the depth map (as `Tuple[int, int, int]`) in the agent state
