@@ -6,3 +6,4 @@ inspirai_fps.egg-info/*
 *.txt
 .vscode/*
 dist/*
+build/*

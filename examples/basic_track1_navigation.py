@@ -1,9 +1,11 @@
 import time
 import random
 import argparse
+import numpy as np
 
 from rich.progress import track
 from rich.console import Console
+
 console = Console()
 
 from inspirai_fps import Game, ActionVariable
@@ -13,7 +15,6 @@ from inspirai_fps.utils import get_position
 parser = argparse.ArgumentParser()
 parser.add_argument("-P", "--port", type=int, default=50051)
 parser.add_argument("-T", "--timeout", type=int, default=10)
-parser.add_argument("-M", "--game-mode", type=int, default=0)
 parser.add_argument("-R", "--time-scale", type=int, default=100)
 parser.add_argument("-I", "--map-id", type=int, default=1)
 parser.add_argument("-S", "--random-seed", type=int, default=0)
@@ -31,33 +32,31 @@ parser.add_argument("--walk-speed", type=float, default=1)
 args = parser.parse_args()
 
 
-# Define a random policy
-def my_policy(state):
-    jump = False
+def get_pitch_yaw(x, y, z):
+    pitch = np.arctan2(y, (x**2 + z**2) ** 0.5) / np.pi * 180
+    yaw = np.arctan2(x, z) / np.pi * 180
+    return pitch, yaw
 
-    if state.time_step % 60 == 0:
-        jump = True
-    
-    return [
-        random.randint(0, 360),  # walk_dir
-        random.randint(1, 10),  # walk_speed
-        jump,  # jump
-        1,  # turn left right
-        0, # look up down
-    ]
+
+def my_policy(state):
+    """ Define a simple navigation policy """
+    self_pos = [state.position_x, state.position_y, state.position_z]
+    target_pos = args.target_location
+    direction = [v2 - v1 for v1, v2 in zip(self_pos, target_pos)]
+    yaw = get_pitch_yaw(*direction)[1]
+    action = [yaw, args.walk_speed]
+    return action
+
 
 # valid actions
 used_actions = [
     ActionVariable.WALK_DIR,
     ActionVariable.WALK_SPEED,
-    ActionVariable.JUMP,
-    ActionVariable.TURN_LR_DELTA,
-    ActionVariable.LOOK_UD_DELTA,
 ]
 
 # instantiate Game
 game = Game(map_dir=args.map_dir, engine_dir=args.engine_dir)
-game.set_game_mode(args.game_mode)
+game.set_game_mode(Game.MODE_NAVIGATION)
 game.set_supply_heatmap_center([args.start_location[0], args.start_location[2]])
 game.set_supply_heatmap_radius(50)
 game.set_supply_indoor_richness(80)
@@ -65,11 +64,9 @@ game.set_supply_outdoor_richness(20)
 game.set_supply_indoor_quantity_range(15, 15)
 game.set_supply_outdoor_quantity_range(13, 13)
 game.set_supply_spacing(3)
-game.set_time_scale(args.time_scale)
 game.set_episode_timeout(args.timeout)
 game.set_start_location(args.start_location)
 game.set_target_location(args.target_location)
-game.set_trigger_range(args.trigger_range)
 game.set_available_actions(used_actions)
 game.set_map_id(args.map_id)
 
@@ -88,7 +85,7 @@ game.init()
 for ep in track(range(args.num_rounds), description="Running Episodes ..."):
     game.set_game_replay_suffix(f"{args.replay_suffix}_episode_{ep}")
     game.new_episode()
-    
+
     while not game.is_episode_finished():
         t = time.time()
         state_all = game.get_state_all()
@@ -104,10 +101,7 @@ for ep in track(range(args.num_rounds), description="Running Episodes ..."):
             "TimeStep": state.time_step,
             "AgentID": agent_id,
             "Location": get_position(state),
-            "Action": {
-                name: val
-                for name, val in zip(used_actions, action_all[agent_id])
-            },
+            "Action": {name: val for name, val in zip(used_actions, action_all[agent_id])},
             "#SupplyInfo": len(state.supply_states),
             "#EnemyInfo": len(state.enemy_states),
             "StepRate": round(1 / dt),
@@ -116,5 +110,5 @@ for ep in track(range(args.num_rounds), description="Running Episodes ..."):
         console.print(step_info, style="bold magenta")
 
     print("episode ended ...")
-    
+
 game.close()

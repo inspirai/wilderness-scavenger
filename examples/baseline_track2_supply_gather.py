@@ -13,9 +13,9 @@ parser.add_argument("--start-hight", type=float, default=5)  # the height of the
 parser.add_argument("--engine-dir", type=str, default="../unity3d")  # path to unity executable
 parser.add_argument("--map-dir", type=str, default="../data")  # path to map files
 parser.add_argument("--map-id", type=int, default=1)  # id of the map
-parser.add_argument("--use-depth", action="store_true")  # whether to use depth map
+parser.add_argument("--use-depth-map", action="store_true")  # whether to use depth map
 parser.add_argument("--resume", action="store_true")  # whether to resume training from a checkpoint
-parser.add_argument("--checkpoint-path", type=str, default="./agent_track2_ppo", help="dir to checkpoint files")
+parser.add_argument("--checkpoint-dir", type=str, default="checkpoints_track2", help="dir to checkpoint files")
 parser.add_argument("--replay-interval", type=int, default=1, help="episode interval to save replay")
 parser.add_argument("--record", action="store_true", help="whether to record the game")
 parser.add_argument("--replay-suffix", type=str, default="", help="suffix of the replay filename")
@@ -33,6 +33,7 @@ parser.add_argument("--train-batch-size", type=int, default=400)
 
 
 if __name__ == "__main__":
+    import os
     import ray
     from ray.rllib.agents.ppo import PPOTrainer
     from ray.tune.logger import pretty_print
@@ -41,7 +42,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     ray.init()
-    agent = PPOTrainer(
+    trainer = PPOTrainer(
         config={
             "env": SupplyGatherDiscreteSingleTarget,
             "env_config": vars(args),
@@ -53,14 +54,15 @@ if __name__ == "__main__":
     )
 
     if args.resume:
-        agent.load_checkpoint(args.checkpoint_path)
+        trainer.load_checkpoint(args.checkpoint_dir)
 
     while True:
-        result = agent.train()
+        result = trainer.train()
         print(pretty_print(result))
         if result["episodes_total"] >= args.stop_episodes:
-            agent.save_checkpoint(args.checkpoint_path)
-            agent.stop()
+            os.makedirs(args.checkpoint_dir, exist_ok=True)
+            trainer.save_checkpoint(args.checkpoint_dir)
+            trainer.stop()
             break
 
     print(pretty_print(result))

@@ -17,7 +17,7 @@ setup(
     author="Inspir.AI",
     author_email="cog2022@inspirai.com",
     url="https://github.com/inspirai/wilderness-scavenger",
-    description="Reinforcement learning platform based on a 3D open-world FPS game developed by Inspir.AI",
+    description="An intelligent agent learning platform based on a 3D open-world FPS game",
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=["inspirai_fps"],
