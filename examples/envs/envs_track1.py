@@ -12,26 +12,30 @@ class BaseEnv(gym.Env):
     def __init__(self, config: EnvContext):
         super().__init__()
 
+        self.record = config.get("record", False)
+        self.replay_suffix = config.get("replay_suffix", "")
+        self.print_log = config.get("detailed_log", False)
+
         self.seed(config["random_seed"])
         self.server_port = BASE_WORKER_PORT + config.worker_index
         print(f">>> New instance {self} on port: {self.server_port}")
         print(f"Worker Index: {config.worker_index}, VecEnv Index: {config.vector_index}")
 
         self.game = Game(map_dir=config["map_dir"], engine_dir=config["engine_dir"], server_port=self.server_port)
-
         self.game.set_map_id(config["map_id"])
         self.game.set_episode_timeout(config["timeout"])
         self.game.set_random_seed(config["random_seed"])
         self.game.set_time_scale(config["time_scale"])
+        self.start_location = config.get("start_location", [0, 0, 0])
 
-    def reset(self, record=False, replay_suffix=""):
+    def reset(self):
         print("Reset for a new game ...")
         self._reset_game_config()
-        if record:
+        if self.record:
             self.game.turn_on_record()
         else:
             self.game.turn_off_record()
-        self.game.set_game_replay_suffix(replay_suffix)
+        self.game.set_game_replay_suffix(self.replay_suffix)
         self.game.new_episode()
         self.state = self.game.get_state()
         self.running_steps = 0
@@ -57,12 +61,11 @@ class NavigationBaseEnv(BaseEnv):
 
         self.start_range = config["start_range"]
         self.start_hight = config["start_hight"]
-        self.trigger_range = config["trigger_range"]
+        self.trigger_range = self.game.get_target_reach_distance()
         self.target_location = config["target_location"]
 
         self.game.set_game_mode(Game.MODE_NAVIGATION)
         self.game.set_target_location(self.target_location)
-        self.game.set_trigger_range(self.trigger_range)
 
     def _reset_game_config(self):
         self.start_location = self._sample_start_location()
@@ -79,10 +82,17 @@ class NavigationBaseEnv(BaseEnv):
         if done:
             cur_pos = get_position(self.state)
             tar_pos = self.target_location
+
             if get_distance(cur_pos, tar_pos) <= self.trigger_range:
                 reward += 100
-            x, y, z = self.start_location
-            print(f"Start: ({x:4.2f}, {y:4.2f}, {z:4.2f}) | #steps: {self.running_steps:4d} | Reward: {reward:4.2f}")
+            
+            if self.print_log:
+                Start = np.round(np.asarray(self.start_location), 2).tolist()
+                Target = np.round(np.asarray(self.target_location), 2).tolist()
+                End =  np.round(np.asarray(get_position(self.state)), 2).tolist()
+                Step = self.running_steps
+                Reward = reward
+                print(f"{Start=}\t{Target=}\t{End=}\t{Step=}\t{Reward=}")
 
         return self._get_obs(), reward, done, {}
 
@@ -98,7 +108,7 @@ class NavigationEnvSimple(NavigationBaseEnv):
         super().__init__(config)
         self.action_pools = {
             ActionVariable.WALK_DIR: [0, 90, 180, 270],
-            ActionVariable.WALK_SPEED: [0, 5, 10],
+            ActionVariable.WALK_SPEED: [3, 6],
         }
         self.action_space = spaces.MultiDiscrete([len(pool) for pool in self.action_pools.values()])
         self.observation_space = spaces.Box(low=-1, high=1, shape=(3,), dtype=np.float32)

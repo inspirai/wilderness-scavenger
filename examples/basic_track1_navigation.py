@@ -68,7 +68,6 @@ game.set_time_scale(args.time_scale)
 game.set_episode_timeout(args.timeout)
 game.set_start_location(args.start_location)
 game.set_target_location(args.target_location)
-game.set_trigger_range(args.trigger_range)
 game.set_available_actions(used_actions)
 game.set_map_id(args.map_id)
 

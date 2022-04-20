@@ -95,7 +95,7 @@ class SupplyGatherBaseEnv(gym.Env):
         self.target_supply_radius = 4  # heatmap center -> radius = 4, supply -> radius = 2
 
         self.list_spaces: List[gym.Space] = [Box(low=-1, high=1, shape=(3,), dtype=np.float32)]
-        if env_config["use_depth"]:
+        if env_config["use_depth_map"]:
             self.game.turn_on_depth_map()
             height = self.game.get_depth_map_height()
             width = self.game.get_depth_map_width()
@@ -113,7 +113,7 @@ class SupplyGatherBaseEnv(gym.Env):
         self.episode_count += 1
         if self.args["record"] and self.episode_count % self.args["replay_interval"] == 0:
             self.game.turn_on_record()
-            self.game.set_game_replay_suffix(self.args["replay_name"])
+            self.game.set_game_replay_suffix(self.args["replay_suffix"])
         else:
             self.game.turn_off_record()
         self.game.new_episode()
@@ -265,7 +265,7 @@ class SupplyGatherDiscreteSingleTarget(SupplyGatherBaseEnv):
         dir_vec = dir_vec / np.linalg.norm(dir_vec)
         obs.append(dir_vec.tolist())
 
-        if self.args["use_depth"]:
+        if self.args["use_depth_map"]:
             obs.append(state.depth_map.tolist())
             return obs
         else:
@@ -361,7 +361,7 @@ class SupplyGatherDiscreteSingleTarget(SupplyGatherBaseEnv):
         obs = []
         obs.append(dir_vec.tolist())
 
-        if self.args["use_depth"]:
+        if self.args["use_depth_map"]:
             obs.append(state.depth_map.tolist())
             return obs
         else:

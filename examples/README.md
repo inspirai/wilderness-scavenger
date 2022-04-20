@@ -81,7 +81,7 @@ python baseline_track1_normal.py \
 --use-depth-map \
 --detailed-log \
 --record --replay-suffix baseline_navigation \
---num-workers 0 --stop-episodes 20 --train-batch-size 400
+--num-workers 1 --stop-iters 20 --stop-reward 80
 ```
 
 ## [baseline_track2_normal.py](baseline_track2_normal.py)

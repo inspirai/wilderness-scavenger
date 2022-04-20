@@ -368,7 +368,7 @@ class Game:
         self.available_actions = actions
         self.action_idx_map = {key: i for i, key in enumerate(self.available_actions)}
 
-    def set_trigger_range(self, trigger_range: float):
+    def __set_trigger_range(self, trigger_range: float):
         """TODO: hide this function from user"""
         assert isinstance(trigger_range, (float, int)) and trigger_range > 0.5
         self.GM.trigger_range = float(trigger_range)
@@ -478,6 +478,9 @@ class Game:
 
     def get_frame_count(self):
         return self.latest_request.time_step
+
+    def get_target_reach_distance(self):
+        return self.GM.trigger_range
 
     def init(self):
         assert len(self.available_actions) > 0
@@ -629,7 +632,7 @@ if __name__ == "__main__":
     game.set_episode_timeout(args.timeout)
     game.set_start_location(args.start_location)
     game.set_target_location(args.target_location)
-    game.set_trigger_range(args.trigger_range)
+    game.__set_trigger_range(args.trigger_range)
     game.set_available_actions(used_actions)
     if args.use_depth_map:
         game.turn_on_depth_map()
