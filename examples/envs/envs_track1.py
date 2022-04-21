@@ -25,7 +25,6 @@ class BaseEnv(gym.Env):
         self.game.set_map_id(config["map_id"])
         self.game.set_episode_timeout(config["timeout"])
         self.game.set_random_seed(config["random_seed"])
-        self.game.set_time_scale(config["time_scale"])
         self.start_location = config.get("start_location", [0, 0, 0])
 
     def reset(self):

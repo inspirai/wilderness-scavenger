@@ -86,8 +86,7 @@ class SupplyGatherBaseEnv(gym.Env):
         self.game.set_supply_outdoor_quantity_range(1, 5)
         self.game.set_supply_spacing(1)
 
-        self.game.set_time_scale(env_config["time_scale"])
-        self.is_inference = env_config["inference"] if "inference" in env_config else False
+        self.is_inference = env_config.get("inference", False)
         self.turn_on_detailed_log = env_config["detailed_log"]
         self.args = env_config
         self.episode_count = 0

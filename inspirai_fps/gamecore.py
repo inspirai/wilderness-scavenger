@@ -22,6 +22,8 @@ __all__ = [
 ]
 
 print_server_log = False
+SPEED_UP_FACTOR = 10
+TRIGGER_DISTANCE = 1
 
 
 class QueueServer(simple_command_pb2_grpc.CommanderServicer):
@@ -263,6 +265,8 @@ class Game:
         self.available_actions = []
         self.use_depth_map = False
         self.GM = self.__get_default_GM()
+        self.__set_time_scale(SPEED_UP_FACTOR)
+        self.__set_trigger_range(TRIGGER_DISTANCE)
 
     def __get_default_GM(self):
         gm_command = simple_command_pb2.GMCommand()
@@ -329,8 +333,7 @@ class Game:
         assert game_mode in [0, 1, 2]
         self.GM.game_mode = game_mode
 
-    def set_time_scale(self, time_scale: int):
-        """TODO: hide this function from user"""
+    def __set_time_scale(self, time_scale: int):
         assert isinstance(time_scale, int) and time_scale >= 1
         self.GM.time_scale = time_scale
 
@@ -338,6 +341,9 @@ class Game:
         assert isinstance(map_id, int) and 1 <= map_id <= 100
         self.valid_locations = load_json(f"{self.map_dir}/{map_id:03d}.json")
         self.GM.map_id = map_id
+
+    def get_valid_locations(self):
+        return self.valid_locations
 
     def set_random_seed(self, random_seed: int):
         assert isinstance(random_seed, int)
@@ -355,6 +361,12 @@ class Game:
                 loc = agent.start_location
                 return [loc.x, loc.y, loc.z]
 
+    def random_start_location(self, agent_id: int = 0):
+        assert isinstance(agent_id, int) and 0 <= agent_id < len(self.GM.agent_setups)
+        agent = self.GM.agent_setups[agent_id]
+        loc = random.choice(self.valid_locations)
+        set_vector3d(agent.start_location, loc)
+
     def set_target_location(self, loc: List[float]):
         assert isinstance(loc, list) and len(loc) == 3
         set_vector3d(self.GM.target_location, loc)
@@ -369,7 +381,6 @@ class Game:
         self.action_idx_map = {key: i for i, key in enumerate(self.available_actions)}
 
     def __set_trigger_range(self, trigger_range: float):
-        """TODO: hide this function from user"""
         assert isinstance(trigger_range, (float, int)) and trigger_range > 0.5
         self.GM.trigger_range = float(trigger_range)
 
@@ -628,7 +639,6 @@ if __name__ == "__main__":
     game.set_supply_indoor_quantity_range(10, 50)
     game.set_supply_outdoor_quantity_range(1, 5)
     game.set_supply_spacing(3)
-    game.set_time_scale(args.time_scale)
     game.set_episode_timeout(args.timeout)
     game.set_start_location(args.start_location)
     game.set_target_location(args.target_location)
