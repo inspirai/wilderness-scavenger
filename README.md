@@ -44,9 +44,8 @@ We developed this repository to provide a training and evaluation platform for t
     └── logs/...
 ```
 
-- `unity3d`: the engine backend extracted from our game development project, containing all the game related assets, binaries and source codes.
+- `unity3d`: the backend engine extracted from our game development project, containing all the game related assets, binaries and source codes.
 - `inspirai_fps`: the python gameplay API for agent training and testing, providing the core [`Game`](inspirai_fps/gamecore.py) class and other useful tool classes and functions.
-- `data`: storing all map related data files and they are used for calculating some state information in the [`AgentState`](inspirai_fps/gamecore.py).
 - `examples`: we provide basic starter codes for each game mode targeting each track of the challenge, and we also give out our implementation of some baseline solutions based on [`ray.rllib`](https://docs.ray.io/en/master/rllib/index.html) reinforcement learning framework.
 
 ## Supported Operating Systems
@@ -58,9 +57,9 @@ Currently, we only support **Linux**. We will update the support for Windows and
 To use the game play API, you need to first install the package `inspirai_fps` by following the commands below:
 
 ```bash
-$ git clone https://github.com/inspirai/wilderness-scavenger
-$ cd wilderness-scavenger
-$ pip install .
+git clone https://github.com/inspirai/wilderness-scavenger
+cd wilderness-scavenger
+pip install .
 ```
 
 We recommend installing this package with python 3.8 (which is our development environment), so you may first create a virtual env using [`conda`](https://www.anaconda.com/) and finish installation:
@@ -73,7 +72,7 @@ $ conda activate WildScav
 
 ## Installation (from PyPI)
 
-Aternatively, you can install the package from PyPI directly. But note that this will **only install the gameplay API**, not the engine binaries and assets. So you still need to manually download the engine binaries and assets from our repository.
+Alternatively, you can install the package from PyPI directly. But note that this will only install the gameplay API `inspirai_fps`, not the backend engine. So you still need to manually download the engine binaries and assets (`unity3d`) from our repository.
 
 ```bash
 pip install inspirai-fps
