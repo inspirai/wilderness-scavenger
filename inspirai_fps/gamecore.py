@@ -1,7 +1,9 @@
 import os
+import sys
 import grpc
 import time
 import random
+import datetime
 import numpy as np
 import subprocess
 from queue import Queue
@@ -13,7 +15,15 @@ from google.protobuf.json_format import MessageToDict
 from inspirai_fps import simple_command_pb2
 from inspirai_fps import simple_command_pb2_grpc
 from inspirai_fps.raycast import RaycastManager
-from inspirai_fps.utils import get_orientation, get_position, set_vector3d, set_GM_command, load_json, vector3d_to_list, get_distance
+from inspirai_fps.utils import (
+    get_orientation,
+    get_position,
+    set_vector3d,
+    set_GM_command,
+    load_json,
+    vector3d_to_list,
+    get_distance,
+)
 
 
 __all__ = [
@@ -124,7 +134,11 @@ class EnemyStateRough:
     - dir_vec: a 2d unit vector pointing from the agent's location to the enemy's location
     """
 
-    def __init__(self, enemy_info: simple_command_pb2.EnemyInfo, obs_data: simple_command_pb2.Observation) -> None:
+    def __init__(
+        self,
+        enemy_info: simple_command_pb2.EnemyInfo,
+        obs_data: simple_command_pb2.Observation,
+    ) -> None:
         self_pos_x = obs_data.location.x
         self_pos_z = obs_data.location.z
         enemy_pos_x = enemy_info.location.x
@@ -164,7 +178,15 @@ class AgentState:
     - depth_map `Iterable[Iterable[float]]`: an H x W array representing the depth of mesh point in the agent's visual-sight window (if turned off this is `None`)
     """
 
-    def __init__(self, obs_data, time_step, game_state, ray_tracer, use_depth_map=False, supply_visible_distance=np.Inf) -> None:
+    def __init__(
+        self,
+        obs_data,
+        time_step,
+        game_state,
+        ray_tracer,
+        use_depth_map=False,
+        supply_visible_distance=np.Inf,
+    ) -> None:
 
         self.ray_tracer = ray_tracer
         self.supply_visible_distance = supply_visible_distance
@@ -198,8 +220,14 @@ class AgentState:
             dir = get_orientation(self)
             self.depth_map = self.ray_tracer.get_depth(pos, dir)[0]
 
-        self.supply_states = [SupplyState(s) for s in filter(self.is_supply_visible, obs_data.supply_info_list)]
-        self.enemy_states = [EnemyStateDetailed(e) for e in filter(self.is_enemy_visible, obs_data.enemy_info_list)]
+        self.supply_states = [
+            SupplyState(s)
+            for s in filter(self.is_supply_visible, obs_data.supply_info_list)
+        ]
+        self.enemy_states = [
+            EnemyStateDetailed(e)
+            for e in filter(self.is_enemy_visible, obs_data.enemy_info_list)
+        ]
 
     def __repr__(self) -> str:
         x = self.position_x
@@ -238,7 +266,14 @@ class AgentState:
             0,  # default 0 -> of no use
         ]
 
-        is_visible = self.ray_tracer.agent_is_visible(body_param, view_angle, agent_team_id, agent_position, camera_location, camerarotation)
+        is_visible = self.ray_tracer.agent_is_visible(
+            body_param,
+            view_angle,
+            agent_team_id,
+            agent_position,
+            camera_location,
+            camerarotation,
+        )
 
         return is_visible[0][1]
 
@@ -254,19 +289,30 @@ class Game:
     MODE_SUP_GATHER = simple_command_pb2.GameModeType.SUP_GATHER_MODE
     MODE_SUP_BATTLE = simple_command_pb2.GameModeType.SUP_BATTLE_MODE
 
-    def __init__(self, map_dir="../map_data", engine_dir="../unity3d", server_port=50051):
+    def __init__(
+        self,
+        map_dir="../map_data",
+        engine_dir="../unity3d",
+        engine_log_dir="./engine_logs",
+        server_port=50051,
+        server_ip="127.0.0.1",
+        default_agent=True,
+    ):
         self.map_dir = map_dir
-        self.valid_locations = []
-        self.unity_exec_path = os.path.join(engine_dir, "fps.x86_64")
-        self.unity_log_name = f"game_server_port={server_port}"
-        self.unity_log_dir = os.path.join(engine_dir, "logs")
-        self.server_ip = "127.0.0.1"
+        self.indoor_locations = None
+        self.outdoor_locations = None
+        self.available_actions = None
+        self.engine_dir = engine_dir
+        self.engine_log_dir = engine_log_dir
+        self.server_ip = server_ip
         self.server_port = server_port
-        self.available_actions = []
         self.use_depth_map = False
         self.GM = self.__get_default_GM()
         self.__set_time_scale(SPEED_UP_FACTOR)
         self.__set_trigger_range(TRIGGER_DISTANCE)
+
+        if default_agent:
+            self.add_agent(agent_name="agent_0")
 
     def __get_default_GM(self):
         gm_command = simple_command_pb2.GMCommand()
@@ -277,7 +323,7 @@ class Game:
         gm_command.time_scale = 1
         gm_command.map_id = 1
         gm_command.random_seed = 0
-        gm_command.num_agents = 1
+        gm_command.num_agents = 0
         gm_command.is_record = False
         gm_command.replay_suffix = ""
 
@@ -298,16 +344,6 @@ class Game:
 
         # ModeSupplyBattle settings
         gm_command.respawn_time = 10
-
-        # Default player settings
-        agent = gm_command.agent_setups.add()
-        agent.id = 0
-        agent.hp = 100
-        agent.num_pack_ammo = 60
-        agent.gun_capacity = 15
-        agent.attack_power = 20
-        agent.agent_name = "InspirAI"
-        set_vector3d(agent.start_location, [0, 1, 0])
 
         return gm_command
 
@@ -339,7 +375,9 @@ class Game:
 
     def set_map_id(self, map_id: int):
         assert isinstance(map_id, int) and 1 <= map_id <= 100
-        self.valid_locations = load_json(f"{self.map_dir}/{map_id:03d}.json")
+        locations = load_json(f"{self.map_dir}/{map_id:03d}.json")
+        self.indoor_locations = locations["indoor"]
+        self.outdoor_locations = locations["outdoor"]
         self.GM.map_id = map_id
 
     def get_valid_locations(self):
@@ -361,10 +399,11 @@ class Game:
                 loc = agent.start_location
                 return [loc.x, loc.y, loc.z]
 
-    def random_start_location(self, agent_id: int = 0):
+    def random_start_location(self, agent_id: int = 0, indoor: bool = False):
         assert isinstance(agent_id, int) and 0 <= agent_id < len(self.GM.agent_setups)
         agent = self.GM.agent_setups[agent_id]
-        loc = random.choice(self.valid_locations)
+        locations = self.indoor_locations if indoor else self.outdoor_locations
+        loc = random.choice(locations)
         set_vector3d(agent.start_location, loc)
 
     def set_target_location(self, loc: List[float]):
@@ -422,7 +461,14 @@ class Game:
         self.GM.supply_house_random_min = qmin
         self.GM.supply_house_random_max = qmax
 
-    def add_supply_refresh(self, refresh_time: int, heatmap_radius: int, heatmap_center: List[float], indoor_richness: int, outdoor_richness: int):
+    def add_supply_refresh(
+        self,
+        refresh_time: int,
+        heatmap_radius: int,
+        heatmap_center: List[float],
+        indoor_richness: int,
+        outdoor_richness: int,
+    ):
         assert isinstance(refresh_time, int) and refresh_time >= 1
         assert isinstance(heatmap_radius, int) and 1 <= heatmap_radius <= 200
         assert isinstance(heatmap_center, list) and len(heatmap_center) == 2
@@ -439,7 +485,15 @@ class Game:
         refresh.supply_create_percent = outdoor_richness
         refresh.supply_house_create_percent = indoor_richness
 
-    def add_agent(self, health=100, num_pack_ammo=60, num_clip_ammo=15, attack=20, start_location=[0, 0, 0], agent_name=None):
+    def add_agent(
+        self,
+        health=100,
+        num_pack_ammo=60,
+        num_clip_ammo=15,
+        attack=20,
+        start_location=[0, 0, 0],
+        agent_name=None,
+    ):
         assert isinstance(start_location, list) and len(start_location) == 3
         assert isinstance(health, int) and 1 <= health <= 100
         assert isinstance(num_clip_ammo, int) and num_clip_ammo >= 0
@@ -447,15 +501,15 @@ class Game:
         assert isinstance(attack, int) and attack >= 1
 
         agent = self.GM.agent_setups.add()
-        agent.id = self.GM.num_agents
-        agent_name = agent_name or f"Agent-{agent.id}"
+        agent_name = agent_name or f"agent_{self.GM.num_agents}"
+
         assert isinstance(agent_name, str) and len(agent_name) > 0
-        agent.agent_name = agent_name
 
         agent.hp = health
         agent.num_pack_ammo = num_pack_ammo
         agent.gun_capacity = num_clip_ammo
         agent.attack_power = attack
+        agent.agent_name = agent_name
 
         set_vector3d(agent.start_location, start_location)
         self.GM.num_agents += 1
@@ -500,19 +554,33 @@ class Game:
 
         # initialize message queue server
         self.server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-        simple_command_pb2_grpc.add_CommanderServicer_to_server(QueueServer(self.request_queue, self.reply_queue), self.server)
+        simple_command_pb2_grpc.add_CommanderServicer_to_server(
+            QueueServer(self.request_queue, self.reply_queue), self.server
+        )
         self.server.add_insecure_port(f"[::]:{self.server_port}")
         self.server.start()
         print("Server started ...")
 
-        # start unity3d game engine
-        os.system(f"chmod +x {self.unity_exec_path}")
+        if sys.platform.startswith("linux"):
+            engine_path = os.path.join(self.engine_dir, "fps.x86_64") 
+            os.system(f"chmod +x {engine_path}")
+            cmd = f"{engine_path} -IP:{self.server_ip} -PORT:{self.server_port}"
+        elif sys.platform.startswith("win32"):
+            engine_path = os.path.join(self.engine_dir, "FPSGameUnity")
+            cmd = f"start {engine_path} -IP:{self.server_ip} -PORT:{self.server_port}"
+        elif sys.platform.startswith("darwin"):
+            raise NotImplementedError("MacOS is not supported yet")
+        else:
+            raise NotImplementedError(f"Platform {sys.platform} is not supported")
 
-        os.makedirs(self.unity_log_dir, exist_ok=True)
-        log_path = os.path.join(self.unity_log_dir, f"{self.unity_log_name}.log")
-        with open(log_path, "w") as f:
-            cmd = f"{self.unity_exec_path} -IP:{self.server_ip} -PORT:{self.server_port}"
-            subprocess.Popen(cmd, shell=True, stdout=f, bufsize=-1)
+        os.makedirs(self.engine_log_dir, exist_ok=True)
+        timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        engine_log_name = f"{timestamp}-port-{self.server_port}.log"
+        engine_log_path = os.path.join(self.engine_log_dir, engine_log_name)
+
+        # start unity3d game engine
+        with open(engine_log_path, "w") as f:
+            self.engine_process = subprocess.Popen(cmd.split(), stdout=f, stderr=f)
         print("Unity3D started ...")
 
         # waiting for unity3d to send the first request
@@ -522,7 +590,13 @@ class Game:
     def get_state(self, agent_id=0):
         for obs_data in self.latest_request.agent_obs_list:
             if obs_data.id == agent_id:
-                return AgentState(obs_data, self.latest_request.time_step, self.latest_request.game_state, self.ray_tracer, self.use_depth_map)
+                return AgentState(
+                    obs_data,
+                    self.latest_request.time_step,
+                    self.latest_request.game_state,
+                    self.ray_tracer,
+                    self.use_depth_map,
+                )
 
     def get_state_all(self):
         state_dict = {}
@@ -531,7 +605,9 @@ class Game:
 
         for obs_data in self.latest_request.agent_obs_list:
             agent_id = obs_data.id
-            state_dict[agent_id] = AgentState(obs_data, time_step, game_state, self.ray_tracer, self.use_depth_map)
+            state_dict[agent_id] = AgentState(
+                obs_data, time_step, game_state, self.ray_tracer, self.use_depth_map
+            )
         return state_dict
 
     def make_action(self, action_cmd_dict):
@@ -579,9 +655,8 @@ class Game:
         self.server.stop(0)
         print("Server stopped ...")
 
-        cmd = "ps -ef | grep fps.x86_64 | grep PORT:" + str(self.server_port) + " | awk '{print $2}' | xargs kill -9"
-        os.system(cmd)
-        print("Unity3D stopped ...")
+        self.engine_process.kill()
+        print("Unity3D killed ...")
 
 
 if __name__ == "__main__":
@@ -595,11 +670,8 @@ if __name__ == "__main__":
     parser.add_argument("-P", "--port", type=int, default=50051)
     parser.add_argument("-T", "--timeout", type=int, default=10)
     parser.add_argument("-M", "--game-mode", type=int, default=0)
-    parser.add_argument("-R", "--time-scale", type=int, default=10)
-    parser.add_argument("-I", "--map-id", type=int, default=1)
     parser.add_argument("-S", "--random-seed", type=int, default=0)
-    parser.add_argument("-N", "--num-rounds", type=int, default=1)
-    parser.add_argument("-TR", "--trigger-range", type=float, default=1)
+    parser.add_argument("--map-id-list", type=int, nargs="+", default=[1])
     parser.add_argument("--num-agents", type=int, default=1)
     parser.add_argument("--use-depth-map", action="store_true")
     parser.add_argument("--record", action="store_true")
@@ -607,20 +679,24 @@ if __name__ == "__main__":
     parser.add_argument("--start-location", type=float, nargs=3, default=[0, 0, 0])
     parser.add_argument("--target-location", type=float, nargs=3, default=[5, 0, 5])
     parser.add_argument("--walk-speed", type=float, default=1)
+    parser.add_argument("--map-dir", type=str, default="../map_data")
     args = parser.parse_args()
+    console.print(args)
 
     def get_picth_yaw(x, y, z):
         pitch = np.arctan2(y, (x**2 + z**2) ** 0.5) / np.pi * 180
         yaw = np.arctan2(x, z) / np.pi * 180
         return pitch, yaw
 
-    def my_policy(state):  #  currently same as simple navigation policy
-        self_pos = [state.position_x, state.position_y, state.position_z]
-        target_pos = args.target_location
-        direction = [v2 - v1 for v1, v2 in zip(self_pos, target_pos)]
+    #  currently same as simple navigation policy
+    def my_policy(
+        state, target_location=args.target_location, walk_speed=args.walk_speed
+    ):
+        agent_location = [state.position_x, state.position_y, state.position_z]
+        direction = [v2 - v1 for v1, v2 in zip(agent_location, target_location)]
         yaw = get_picth_yaw(*direction)[1]
         turn_lr_delta = random.choice([1, 0, -1])
-        action = [yaw, args.walk_speed, turn_lr_delta, True]
+        action = [yaw, walk_speed, turn_lr_delta, True]
         return action
 
     used_actions = [
@@ -630,57 +706,62 @@ if __name__ == "__main__":
         ActionVariable.PICKUP,
     ]
 
-    game = Game(server_port=args.port)
+    game = Game(map_dir=args.map_dir, server_port=args.port)
     game.set_game_mode(args.game_mode)
     game.set_supply_heatmap_center([args.start_location[0], args.start_location[2]])
-    game.set_supply_heatmap_radius(50)
-    game.set_supply_indoor_richness(80)
-    game.set_supply_outdoor_richness(20)
+    game.set_supply_heatmap_radius(10)
+    game.set_supply_indoor_richness(50)
+    game.set_supply_outdoor_richness(10)
     game.set_supply_indoor_quantity_range(10, 50)
     game.set_supply_outdoor_quantity_range(1, 5)
-    game.set_supply_spacing(3)
+    game.set_supply_spacing(6)
     game.set_episode_timeout(args.timeout)
     game.set_start_location(args.start_location)
     game.set_target_location(args.target_location)
-    game.__set_trigger_range(args.trigger_range)
     game.set_available_actions(used_actions)
+
     if args.use_depth_map:
         game.turn_on_depth_map()
+
     if args.record:
         game.turn_on_record()
 
     for agent_id in range(1, args.num_agents):
-        start_loc = [random.randint(-10, 10), 3, random.randint(-10, 10)]
-        game.add_agent(start_location=start_loc)
+        game.add_agent(agent_name=f"agent_{agent_id}")
 
-    game.set_map_id(args.map_id)
     game.init()
 
-    for ep in track(range(args.num_rounds), description="Running Episodes ..."):
-        game.set_game_replay_suffix(f"{args.replay_suffix}_episode_{ep}")
+    for map_id in track(args.map_id_list, description="Running Maps ..."):
+        game.set_game_replay_suffix(f"{args.replay_suffix}_map_{map_id:03d}")
+        game.set_map_id(map_id)
         game.new_episode()
 
         while not game.is_episode_finished():
             t = time.time()
             state_all = game.get_state_all()
-            action_all = {agent_id: my_policy(state_all[agent_id]) for agent_id in state_all}
+            action_all = {
+                agent_id: my_policy(state_all[agent_id]) for agent_id in state_all
+            }
             game.make_action(action_all)
             dt = time.time() - t
 
             agent_id = 0
             state = state_all[agent_id]
             step_info = {
-                "Episode": ep,
+                "Map ID": map_id,
                 "GameState": state.game_state,
                 "TimeStep": state.time_step,
                 "AgentID": agent_id,
                 "Location": get_position(state),
-                "Action": {name: val for name, val in zip(used_actions, action_all[agent_id])},
+                "Action": {
+                    name: val for name, val in zip(used_actions, action_all[agent_id])
+                },
                 "#SupplyInfo": len(state.supply_states),
                 "#EnemyInfo": len(state.enemy_states),
                 "StepRate": round(1 / dt),
-                # "DepthMap": state.depth_map.shape
             }
+            if state.depth_map is not None:
+                step_info["DepthMap"] = state.depth_map.shape
             console.print(step_info, style="bold magenta")
 
         print("episode ended ...")
