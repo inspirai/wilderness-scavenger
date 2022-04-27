@@ -31,10 +31,6 @@ __all__ = [
     "Game",
 ]
 
-print_server_log = False
-SPEED_UP_FACTOR = 10
-TRIGGER_DISTANCE = 1
-
 
 class QueueServer(simple_command_pb2_grpc.CommanderServicer):
     def __init__(self, request_queue, reply_queue) -> None:
@@ -44,17 +40,7 @@ class QueueServer(simple_command_pb2_grpc.CommanderServicer):
 
     def Request_S2A_UpdateGame(self, request, context):
         self.request_queue.put(request)
-
-        if print_server_log:
-            print("Put request into queue ...")
-            print(request)
-
         reply = self.reply_queue.get()
-
-        if print_server_log:
-            print("Get reply from queue ...")
-            print(reply)
-
         return reply
 
 
@@ -233,7 +219,8 @@ class AgentState:
         x = self.position_x
         y = self.position_y
         z = self.position_z
-        return f"GameState[ts={self.time_step}][x={x:.2f},y={y:.2f},z={z:.2f}][supply={self.num_supply}][gun_ammo={self.weapon_ammo}][pack_ammo={self.spare_ammo}]"
+        return f"GameState[ts={self.time_step}][x={x:.2f},y={y:.2f},z={z:.2f}][supply={self.num_supply}][gun_ammo={self.weapon_ammo}][pack_ammo={self.spare_ammo}][hp={self.health}]"
+        # return str(self.__dict__)
 
     def is_enemy_visible(self, enemy_info: simple_command_pb2.EnemyInfo):
         view_angle = [90 + 20, (90 + 20) / 16 * 9]
@@ -289,6 +276,13 @@ class Game:
     MODE_SUP_GATHER = simple_command_pb2.GameModeType.SUP_GATHER_MODE
     MODE_SUP_BATTLE = simple_command_pb2.GameModeType.SUP_BATTLE_MODE
 
+    SPEED_UP_FACTOR = 10
+    TRIGGER_DISTANCE = 1
+    WATER_SPEED_DECAY = 0.5
+    INVINCIBLE_TIME = 10
+    RESPAWN_TIME = 10
+    SUPPLY_DROP_PERCENT = 50
+
     def __init__(
         self,
         map_dir="../map_data",
@@ -308,8 +302,6 @@ class Game:
         self.server_port = server_port
         self.use_depth_map = False
         self.GM = self.__get_default_GM()
-        self.__set_time_scale(SPEED_UP_FACTOR)
-        self.__set_trigger_range(TRIGGER_DISTANCE)
 
         if default_agent:
             self.add_agent(agent_name="agent_0")
@@ -319,17 +311,18 @@ class Game:
 
         # Common settings
         gm_command.timeout = 60
-        gm_command.game_mode = self.MODE_NAVIGATION
-        gm_command.time_scale = 1
+        gm_command.game_mode = Game.MODE_NAVIGATION
+        gm_command.time_scale = Game.SPEED_UP_FACTOR
         gm_command.map_id = 1
         gm_command.random_seed = 0
         gm_command.num_agents = 0
         gm_command.is_record = False
         gm_command.replay_suffix = ""
+        gm_command.water_speed_decay = Game.WATER_SPEED_DECAY
 
         # ModeNavigation settings
         set_vector3d(gm_command.target_location, [1, 0, 1])
-        gm_command.trigger_range = 1
+        gm_command.trigger_range = Game.TRIGGER_DISTANCE
 
         # ModeSupplyGather settings
         set_vector3d(gm_command.supply_heatmap_center, [0, 0, 0])
@@ -343,7 +336,9 @@ class Game:
         gm_command.supply_house_random_max = 10
 
         # ModeSupplyBattle settings
-        gm_command.respawn_time = 10
+        gm_command.respawn_time = Game.RESPAWN_TIME
+        gm_command.invincible_time = Game.INVINCIBLE_TIME
+        gm_command.supply_loss_percent_when_dead = Game.SUPPLY_DROP_PERCENT
 
         return gm_command
 
@@ -368,10 +363,6 @@ class Game:
     def set_game_mode(self, game_mode: int):
         assert game_mode in [0, 1, 2]
         self.GM.game_mode = game_mode
-
-    def __set_time_scale(self, time_scale: int):
-        assert isinstance(time_scale, int) and time_scale >= 1
-        self.GM.time_scale = time_scale
 
     def set_map_id(self, map_id: int):
         assert isinstance(map_id, int) and 1 <= map_id <= 100
@@ -418,10 +409,6 @@ class Game:
         assert isinstance(actions, list) and len(actions) >= 1
         self.available_actions = actions
         self.action_idx_map = {key: i for i, key in enumerate(self.available_actions)}
-
-    def __set_trigger_range(self, trigger_range: float):
-        assert isinstance(trigger_range, (float, int)) and trigger_range > 0.5
-        self.GM.trigger_range = float(trigger_range)
 
     def set_game_replay_suffix(self, replay_suffix: str):
         assert isinstance(replay_suffix, str)
@@ -510,8 +497,9 @@ class Game:
         agent.gun_capacity = num_clip_ammo
         agent.attack_power = attack
         agent.agent_name = agent_name
-
+        agent.id = self.GM.num_agents
         set_vector3d(agent.start_location, start_location)
+
         self.GM.num_agents += 1
 
     def turn_on_record(self):
@@ -562,14 +550,15 @@ class Game:
         print("Server started ...")
 
         if sys.platform.startswith("linux"):
-            engine_path = os.path.join(self.engine_dir, "fps.x86_64") 
+            engine_path = os.path.join(self.engine_dir, "fps.x86_64")
             os.system(f"chmod +x {engine_path}")
             cmd = f"{engine_path} -IP:{self.server_ip} -PORT:{self.server_port}"
         elif sys.platform.startswith("win32"):
             engine_path = os.path.join(self.engine_dir, "FPSGameUnity")
             cmd = f"start {engine_path} -IP:{self.server_ip} -PORT:{self.server_port}"
         elif sys.platform.startswith("darwin"):
-            raise NotImplementedError("MacOS is not supported yet")
+            engine_path = os.path.join(self.engine_dir, "fps_main.app")
+            cmd = f"open {engine_path} -IP:{self.server_ip} -PORT:{self.server_port}"
         else:
             raise NotImplementedError(f"Platform {sys.platform} is not supported")
 
