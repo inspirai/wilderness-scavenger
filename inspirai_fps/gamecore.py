@@ -633,8 +633,14 @@ class Game:
         print("Started new episode ...")
 
         mesh_file_path = f"{self.map_dir}/{self.GM.map_id:03d}.obj"
-        self.ray_tracer = RaycastManager(mesh_file_path)
+        self.ray_tracer = RaycastManager(
+            mesh_file_path, width=self.depthmap_width, height=self.depthmap_height
+        )
         print(f"Map {self.GM.map_id:03d} loaded ...")
+
+    def set_depth_map_resolution(self, width, height):
+        self.depthmap_width = width
+        self.depthmap_height = height
 
     def close(self):
         reply = simple_command_pb2.A2S_Reply_Data()
