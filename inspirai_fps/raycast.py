@@ -17,9 +17,13 @@ def perspective_frustum(hw_ratio, x_fov, znear, zfar):
 
 
 class RaycastManager(object):
-    def __init__(self, mesh_file_path, width=38, height=22, depth=100):
-        self.HEIGHT = height
-        self.WIDTH = width
+    BASE_HEIGHT = 22
+    BASE_WIDTH = 38
+    DEPTH = 100
+
+    def __init__(self, mesh_file_path, scale_factor=1, depth=100):
+        self.HEIGHT = self.BASE_HEIGHT * scale_factor
+        self.WIDTH = self.BASE_WIDTH * scale_factor
         self.DEPTH = depth  # the maximum vision distance in the depth map -> unit: meter
 
         if platform.startswith("linux"):
