@@ -282,6 +282,7 @@ class Game:
     INVINCIBLE_TIME = 10
     RESPAWN_TIME = 10
     SUPPLY_DROP_PERCENT = 50
+    MAX_VISION_DEPTH = 100
 
     def __init__(
         self,
@@ -301,6 +302,7 @@ class Game:
         self.server_ip = server_ip
         self.server_port = server_port
         self.use_depth_map = False
+        self.scale_factor = 1
         self.GM = self.__get_default_GM()
 
         if default_agent:
@@ -514,20 +516,11 @@ class Game:
     def turn_off_depth_map(self):
         self.use_depth_map = False
 
-    def get_depth_map_height(self):
-        """deprecated: use get_depth_map_size instead"""
-        return RaycastManager.HEIGHT
-
-    def get_depth_map_width(self):
-        """deprecated: use get_depth_map_size instead"""
-        return RaycastManager.WIDTH
-
-    def get_depth_limit(self):
-        """deprecated: use get_depth_map_size instead"""
-        return RaycastManager.DEPTH
-
     def get_depth_map_size(self):
-        return RaycastManager.WIDTH, RaycastManager.HEIGHT, RaycastManager.DEPTH
+        return self.ray_tracer.WIDTH, self.ray_tracer.HEIGHT, self.ray_tracer.DEPTH
+
+    def set_depth_map_scale(self, factor=1):
+        self.scale_factor = factor
 
     def get_frame_count(self):
         return self.latest_request.time_step
@@ -633,7 +626,7 @@ class Game:
         print("Started new episode ...")
 
         mesh_file_path = f"{self.map_dir}/{self.GM.map_id:03d}.obj"
-        self.ray_tracer = RaycastManager(mesh_file_path)
+        self.ray_tracer = RaycastManager(mesh_file_path, self.scale_factor, self.MAX_VISION_DEPTH)
         print(f"Map {self.GM.map_id:03d} loaded ...")
 
     def close(self):

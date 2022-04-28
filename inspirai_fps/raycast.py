@@ -17,12 +17,15 @@ def perspective_frustum(hw_ratio, x_fov, znear, zfar):
 
 
 class RaycastManager(object):
-    """进行射线库的管理"""
-    HEIGHT = 22
-    WIDTH = 38
-    DEPTH = 100  # the maximum vision distance in the depth map -> unit: meter
+    BASE_HEIGHT = 22
+    BASE_WIDTH = 38
+    DEPTH = 100
 
-    def __init__(self, mesh_file_path):
+    def __init__(self, mesh_file_path, scale_factor=1, depth=100):
+        self.HEIGHT = self.BASE_HEIGHT * scale_factor
+        self.WIDTH = self.BASE_WIDTH * scale_factor
+        self.DEPTH = depth  # the maximum vision distance in the depth map -> unit: meter
+
         if platform.startswith("linux"):
             lib_filename = "libraycaster.so"
         elif platform == "darwin":
@@ -40,9 +43,13 @@ class RaycastManager(object):
             c_func = self.ray_lib.init_mesh
             c_func.argtypes = [
                 ctypes.c_void_p,  # ray_tracer_ptr
-                ndpointer(ctypes.c_float, flags="C_CONTIGUOUS"),  # vertices. (num_vertices, 3)
+                ndpointer(
+                    ctypes.c_float, flags="C_CONTIGUOUS"
+                ),  # vertices. (num_vertices, 3)
                 ctypes.c_size_t,  # num_vertices
-                ndpointer(ctypes.c_uint32, flags="C_CONTIGUOUS"),  # faces. (num_faces, 3)
+                ndpointer(
+                    ctypes.c_uint32, flags="C_CONTIGUOUS"
+                ),  # faces. (num_faces, 3)
                 ctypes.c_size_t,  # num_faces
             ]
             c_func.restype = ctypes.c_void_p
@@ -82,7 +89,7 @@ class RaycastManager(object):
             c_func.argtypes = [
                 ctypes.c_void_p,  # ray_tracer_ptr
                 ndpointer(ctypes.c_float, flags="C_CONTIGUOUS"),  # body param
-                ndpointer(ctypes.c_float, flags="C_CONTIGUOUS"),  # view param 
+                ndpointer(ctypes.c_float, flags="C_CONTIGUOUS"),  # view param
                 ndpointer(ctypes.c_float, flags="C_CONTIGUOUS"),  # position
                 ndpointer(ctypes.c_float, flags="C_CONTIGUOUS"),  # cameralocation
                 ndpointer(ctypes.c_float, flags="C_CONTIGUOUS"),  # cameralocation
@@ -122,7 +129,9 @@ class RaycastManager(object):
 
         num_cameras = 1
         out_depth_values_ptr = (ctypes.POINTER(ctypes.c_float) * num_cameras)()
-        cam_param_array_double = np.zeros((num_cameras, 16), dtype=np.float64, order="C")
+        cam_param_array_double = np.zeros(
+            (num_cameras, 16), dtype=np.float64, order="C"
+        )
         for i in range(num_cameras):
             cam_pos = np.array(position_in_mesh[i * 3 : i * 3 + 3])
             cam_param_array_double[i, 0:3] = cam_pos
@@ -143,7 +152,9 @@ class RaycastManager(object):
 
         out_depth_maps = []
         for i in range(num_cameras):
-            depth_map = np.ctypeslib.as_array(out_depth_values_ptr[i], shape=(height, width)).copy()
+            depth_map = np.ctypeslib.as_array(
+                out_depth_values_ptr[i], shape=(height, width)
+            ).copy()
             depth_map[np.isnan(depth_map)] = far
             out_depth_maps.append(depth_map)
 
@@ -163,7 +174,9 @@ class RaycastManager(object):
         render_param_array_double = np.zeros((num_rays, 7), dtype=np.float64, order="C")
 
         for i in range(num_rays):
-            render_param_array_double[i, 0:3] = np.array([ray_origin[i][0], -ray_origin[i][1], ray_origin[i][2]])
+            render_param_array_double[i, 0:3] = np.array(
+                [ray_origin[i][0], -ray_origin[i][1], ray_origin[i][2]]
+            )
             render_param_array_double[i, 3:6] = np.array(
                 [ray_direction[i][0], -ray_direction[i][1], ray_direction[i][2]]
             )
@@ -177,7 +190,9 @@ class RaycastManager(object):
             out_depth_values_ptr,
         )
 
-        ray_map = np.ctypeslib.as_array(out_depth_values_ptr[0], shape=(num_rays,)).copy()
+        ray_map = np.ctypeslib.as_array(
+            out_depth_values_ptr[0], shape=(num_rays,)
+        ).copy()
         ray_map[np.isnan(ray_map)] = far
 
         self._free(out_depth_values_ptr)
@@ -195,9 +210,13 @@ class RaycastManager(object):
         num_rays_per_layer = 60
         out_depth_values_ptr = (ctypes.POINTER(ctypes.c_float) * 1)()
         render_param_array_double = np.zeros((num_rays, 7), dtype=np.float64, order="C")
-        render_param_array_double2 = np.zeros((num_rays, 2), dtype=np.float64, order="C")
+        render_param_array_double2 = np.zeros(
+            (num_rays, 2), dtype=np.float64, order="C"
+        )
         for i in range(num_rays):
-            render_param_array_double[i, 0:3] = np.array([ray_origin[i][0], -ray_origin[i][1], ray_origin[i][2]])
+            render_param_array_double[i, 0:3] = np.array(
+                [ray_origin[i][0], -ray_origin[i][1], ray_origin[i][2]]
+            )
             render_param_array_double[i, 3:6] = np.array(
                 [ray_direction[i][0], -ray_direction[i][1], ray_direction[i][2]]
             )
@@ -214,14 +233,24 @@ class RaycastManager(object):
             out_depth_values_ptr,
         )
 
-        ray_map = np.ctypeslib.as_array(out_depth_values_ptr[0], shape=(3 * num_rays_per_layer,)).copy()
+        ray_map = np.ctypeslib.as_array(
+            out_depth_values_ptr[0], shape=(3 * num_rays_per_layer,)
+        ).copy()
         ray_map[np.isnan(ray_map)] = far
 
         self._free(out_depth_values_ptr)
 
         return ray_map
 
-    def agent_is_visible(self, body_param, view_angle, agent_team_id, positon, cameralocation, camerarotation):
+    def agent_is_visible(
+        self,
+        body_param,
+        view_angle,
+        agent_team_id,
+        positon,
+        cameralocation,
+        camerarotation,
+    ):
         agent_num = len(agent_team_id)
         c_func = self.ray_lib.agent_is_visible
         is_visiable = np.zeros((agent_num, agent_num), dtype=np.uint32, order="C")
