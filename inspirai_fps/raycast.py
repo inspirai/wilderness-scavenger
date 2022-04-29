@@ -28,9 +28,9 @@ class RaycastManager(object):
 
         if platform.startswith("linux"):
             lib_filename = "libraycaster.so"
-        elif platform == "darwin":
+        elif platform.startswith("darwin"):
             lib_filename = "libraycaster.dylib"
-        elif platform == "win32":
+        elif platform.startswith("win"):
             lib_filename = "libraycaster.dll"
         else:
             raise NotImplementedError(platform)
@@ -102,15 +102,21 @@ class RaycastManager(object):
         except Exception:
             print("External library not loaded correctly: {}".format(lib_filename))
 
+        self.update_mesh(mesh_file_path)
+
+    def update_mesh(self, mesh_file_path):
         self.depth_ptr = ctypes.POINTER(ctypes.c_void_p)()
-
+        
         mesh_0 = trimesh.load(mesh_file_path, force="mesh")
-
         v = np.array(mesh_0.vertices).astype(np.float32)
         f = np.array(mesh_0.faces).astype(np.uint32)
 
         c_func = self.ray_lib.init_mesh
         self.depth_ptr = c_func(self.depth_ptr, v, int(v.shape[0]), f, int(f.shape[0]))
+
+    def update_scale(self, scale_factor):
+        self.HEIGHT = self.BASE_HEIGHT * scale_factor
+        self.WIDTH = self.BASE_WIDTH * scale_factor
 
     def get_depth(self, position, direction):
         """
