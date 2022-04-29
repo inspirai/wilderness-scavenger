@@ -12,12 +12,12 @@ from inspirai_fps.utils import get_position
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-P", "--port", type=int, default=50051)
-parser.add_argument("-T", "--timeout", type=int, default=10)
-parser.add_argument("-M", "--game-mode", type=int, default=0)
-parser.add_argument("-S", "--random-seed", type=int, default=0)
-parser.add_argument("-N", "--num-rounds", type=int, default=1)
-parser.add_argument("-I", "--map-id", type=int, default=1)
+parser.add_argument("--port", type=int, default=50051)
+parser.add_argument("--timeout", type=int, default=10)
+parser.add_argument("--game-mode", type=int, default=0)
+parser.add_argument("--random-seed", type=int, default=0)
+parser.add_argument("--num-episodes", type=int, default=1)
+parser.add_argument("--map-id", type=int, default=1)
 parser.add_argument("--map-dir", type=str, default="../map_data")
 parser.add_argument("--engine-dir", type=str, default="../unity3d")
 parser.add_argument("--use-depth-map", action="store_true")
@@ -75,12 +75,13 @@ if args.use_depth_map:
 if args.record:
     game.turn_on_record()
 
-game.init()
 
-for ep in track(range(args.num_rounds), description="Running Episodes ..."):
+game.init()
+for ep in track(range(args.num_episodes), description="Running Episodes ..."):
     if args.random_start_location:
         for agent_id in range(args.num_agents):
             game.random_start_location(agent_id)
+   
     game.set_game_replay_suffix(f"{args.replay_suffix}_episode_{ep}")
     console.print(game.get_game_config())
 

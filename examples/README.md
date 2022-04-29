@@ -11,7 +11,7 @@ Here we provide some example python scripts, which may help you get familiar wit
 ```bash
 # run the game in Navigation mode for one episode with 3 players and turn on depth map rendering
 python basic.py \
---num-rounds 1 --num-agents 3 \
+--num-episodes 1 --num-agents 3 \
 --record --replay-suffix basic_demo \
 --use-depth-map --game-mode 0  
 ```
@@ -25,9 +25,9 @@ python basic.py \
 ```bash
 # run the game in Navigation mode for one episode with 1 player and turn on depth map rendering
 python basic_track1_navigation.py \
---num-rounds 1 --num-agents 1 \
+--num-episodes 1 \
 --record --replay-suffix simple_navigation \
---use-depth-map --game-mode 0
+--use-depth-map
 ```
 
 ## [basic_track2_supply_gather.py](basic_track2_supply_gather.py)
@@ -39,23 +39,23 @@ python basic_track1_navigation.py \
 ```bash
 # run the game in Supply_gather mode for one episode with 1 player and turn on depth map rendering
 python basic_track2_supply_gather.py \
---num-rounds 1 --num-agents 1 \
+--num-episodes 1 \
 --record --replay-suffix simple_navigation \
---use-depth-map --game-mode 1
+--use-depth-map
 ```
 
 ## [basic_track3_supply_battle.py](basic_track3_supply_battle.py)
 
 - Show the basic use of game playing interfaces for track 3
-- An agent is controlled by a simple battle policy that tells the agent to act randomly
+- Two agent is controlled by a simple battle policy that tells the agent to act randomly
 - Multiple game configuration parameters (including `timeout`, `map_id`, `walk_speed` etc.) can be set as you wish
 
 ```bash
 # run the game in Supply_battle mode for one episode with 1 player and turn on depth map rendering
 python basic_track3_supply_battle.py \
---num-rounds 1 --num-agents 1 \
+--num-episodes 1 --num-agents 2 \
 --record --replay-suffix simple_navigation \
---use-depth-map --game-mode 2
+--use-depth-map
 ```
 
 # Getting Started: baseline training scripts based on Ray
