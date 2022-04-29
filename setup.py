@@ -13,7 +13,7 @@ package_data = ["__init__.py", "lib/*"]
 
 setup(
     name="inspirai_fps",
-    version="0.0.1",
+    version="0.0.3",
     author="Inspir.AI",
     author_email="cog2022@inspirai.com",
     url="https://github.com/inspirai/wilderness-scavenger",
