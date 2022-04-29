@@ -272,10 +272,12 @@ class AgentState:
 
 
 class Game:
+    # the game mode indicators
     MODE_NAVIGATION = simple_command_pb2.GameModeType.NAVIGATION_MODE
     MODE_SUP_GATHER = simple_command_pb2.GameModeType.SUP_GATHER_MODE
     MODE_SUP_BATTLE = simple_command_pb2.GameModeType.SUP_BATTLE_MODE
 
+    # game config constants that are not changeable by the user
     SPEED_UP_FACTOR = 10
     TRIGGER_DISTANCE = 1
     WATER_SPEED_DECAY = 0.5
@@ -291,7 +293,6 @@ class Game:
         engine_log_dir="./engine_logs",
         server_port=50051,
         server_ip="127.0.0.1",
-        default_agent=True,
     ):
         self.map_dir = map_dir
         self.indoor_locations = None
@@ -301,12 +302,15 @@ class Game:
         self.engine_log_dir = engine_log_dir
         self.server_ip = server_ip
         self.server_port = server_port
+
+        # initialize default values
+        self.GM = self.__get_default_GM()
+        self.set_map_id(self.GM.map_id)
+        self.add_agent(agent_name="agent_0")
         self.use_depth_map = False
         self.scale_factor = 1
-        self.GM = self.__get_default_GM()
-
-        if default_agent:
-            self.add_agent(agent_name="agent_0")
+        self.mesh_file_path = f"{self.map_dir}/{self.GM.map_id:03d}.obj"
+        self.ray_tracer = RaycastManager(self.mesh_file_path, self.scale_factor, self.MAX_VISION_DEPTH)
 
     def __get_default_GM(self):
         gm_command = simple_command_pb2.GMCommand()
@@ -626,7 +630,8 @@ class Game:
         print("Started new episode ...")
 
         mesh_file_path = f"{self.map_dir}/{self.GM.map_id:03d}.obj"
-        self.ray_tracer = RaycastManager(mesh_file_path, self.scale_factor, self.MAX_VISION_DEPTH)
+        self.ray_tracer.update_mesh(mesh_file_path)
+        self.ray_tracer.update_scale(self.scale_factor)
         print(f"Map {self.GM.map_id:03d} loaded ...")
 
     def close(self):
