@@ -199,17 +199,22 @@ class AgentState:
         self.num_supply = obs_data.num_supply
         self.is_waiting_respawn = obs_data.is_waiting_respawn
         self.is_invincible = obs_data.is_invincible
-
         self.depth_map = None
+
         if use_depth_map:
             pos = get_position(self)
-            dir = get_orientation(self)
+            dir = [
+                0,
+                self.pitch,  # -90 to 90
+                self.yaw - 180  # -180 to 180
+            ]
             self.depth_map = self.ray_tracer.get_depth(pos, dir)[0]
 
         self.supply_states = [
             SupplyState(s)
             for s in filter(self.is_supply_visible, obs_data.supply_info_list)
         ]
+        
         self.enemy_states = [
             EnemyStateDetailed(e)
             for e in filter(self.is_enemy_visible, obs_data.enemy_info_list)

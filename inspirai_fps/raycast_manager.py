@@ -109,10 +109,12 @@ class RaycastManager(object):
         width = self.WIDTH
         far = self.FAR
 
-        position_in_mesh = np.array([position[0], -position[1], position[2]]) / 100.0
+        # position_in_mesh = np.array([position[0], -position[1], position[2]]) / 100.0
+        position_in_mesh = np.array([position[0], position[1], position[2]]) / 100.0
         r = np.array(direction) * np.pi / 180
         cam_lookat = position_in_mesh + np.array(
-            [np.cos(r[2]) * np.cos(r[1]), -np.sin(r[2]) * np.cos(r[1]), np.sin(r[1])]
+            # [np.cos(r[2]) * np.cos(r[1]), -np.sin(r[2]) * np.cos(r[1]), np.sin(r[1])]
+            [-np.cos(r[2]) * np.cos(r[1]), np.sin(r[2]) * np.cos(r[1]), np.sin(r[1])]
         )  # negative
 
         num_cameras = 1

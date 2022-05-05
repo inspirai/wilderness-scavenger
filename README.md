@@ -50,6 +50,7 @@ We developed this repository to provide a training and evaluation platform for t
 - `examples`: we provide basic starter codes for each game mode targeting each track of the challenge, and we also give out our implementation of some baseline solutions based on [`ray.rllib`](https://docs.ray.io/en/master/rllib/index.html) reinforcement learning framework.
 
 ## Supported Platforms
+
 We support the multiple platforms with different engine backends, including:
 
 - Linux: download the engine [here](https://drive.google.com/file/d/1HAZgr2jcVHq_-ThkVbg9jUbIVfMorudp/view?usp=sharing)
@@ -99,9 +100,6 @@ game = Game(..., engine_dir=args.engine_dir, ...)
 ## Loading Map Data
 
 To get access to some features like realtime depth map computation or randomized player spawning, you need to load the map data and load them into the `Game`. After this, once you turn on the depth map rendering, the game server will automatically compute a depth map viewing from the player's first person perspective at each time step.
-
-<!-- 1. Download world meshes from [data_meshes](https://drive.google.com/file/d/1SY43c5Gg8x-bxzqIazxuV8vOKCAh4LI2/view?usp=sharing) and the valid location lists from [data_locations](https://drive.google.com/file/d/1g_oC9hC7mrlKeDUtyU-y-izlblQRIp-D/view?usp=sharing) -->
-<!-- 2. Unzip all mesh (`xxx.obj`) and location (`xxx.json`) files to the same folder (e.g. `'<WORKDIR>/map_data'`) -->
 
 1. Download map data [here](https://drive.google.com/file/d/1QGrKfnVZ2Z7f2JPjLbYAQy5Pv6y8vz3p/view?usp=sharing) and decompress the downloaded file to your preferred directory (e.g., `<WORKDIR>/map_data`).
 2. Set `map_dir` parameter of the `Game` initializer accordingly
