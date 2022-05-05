@@ -34,7 +34,7 @@ We developed this repository to provide a training and evaluation platform for t
 │   ├── lib/...
 │   ├── __init__.py
 │   ├── gamecore.py
-│   ├── raycast.py
+│   ├── raycast_manager.py
 │   ├── simple_command_pb2.py
 │   ├── simple_command_pb2_grpc.py
 │   └── utils.py
@@ -141,13 +141,26 @@ We have also developed a replay visualization tool based on the Unity3D game eng
 
 To use this tool, follow the instruction below:
 
-- Decompress the downloaded file to your preferred directory (e.g. `<WORKDIR>/replay_tool`).
+- Decompress the downloaded file to anywhere you prefer.
 - Turn on recording function with `game.turn_on_record()`. One record file will be saved at the end of each episode.
+
+Find the replay files under the engine directory according to your platform:
+
+- Linux: `<engine_dir>/fps_Data/StreamingAssets/Replay`
+- Windows: `<engine_dir>\FPSGameUnity_Data\StreamingAssets\Replay`
+- MacOS: `<engine_dir>/Contents/Resources/Data/StreamingAssets/Replay`
+
+Copy replay files you want to the replay tool directory according to your platform and start the replay tool.
 
 For Windows users:
 
-- Copy the replay file (e.g. `replay.bin`) from `"fps_Data/StreamingAssets/Replay"` (in the engine directory) to `"FPSGameUnity_Data/StreamingAssets/Replay"` (e.g., `"<WORKDIR>/replay_tool"`)
+- Copy the replay file (e.g. `xxx.bin`) into `<replayer_dir>/FPSGameUnity_Data/StreamingAssets/Replay`
 - Run `FPSGameUnity.exe` to start the application.
+
+For MacOS users:
+
+- Copy the replay file (e.g. `xxx.bin`) into `<replayer_dir>/Contents/Resources/Data/StreamingAssets/Replay`
+- Run `fps.app` to start the application.
 
 In the replay tool, you can:
 
