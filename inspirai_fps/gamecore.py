@@ -8,13 +8,13 @@ import numpy as np
 import subprocess
 from queue import Queue
 from concurrent import futures
-from typing import List, Tuple, Any
+from typing import Dict, List, Tuple, Any
 
 from google.protobuf.json_format import MessageToDict
 
 from inspirai_fps import simple_command_pb2
 from inspirai_fps import simple_command_pb2_grpc
-from inspirai_fps.raycast import RaycastManager
+from inspirai_fps.raycast_manager import RaycastManager
 from inspirai_fps.utils import (
     get_orientation,
     get_position,
@@ -220,7 +220,6 @@ class AgentState:
         y = self.position_y
         z = self.position_z
         return f"GameState[ts={self.time_step}][x={x:.2f},y={y:.2f},z={z:.2f}][supply={self.num_supply}][gun_ammo={self.weapon_ammo}][pack_ammo={self.spare_ammo}][hp={self.health}]"
-        # return str(self.__dict__)
 
     def is_enemy_visible(self, enemy_info: simple_command_pb2.EnemyInfo):
         view_angle = [90 + 20, (90 + 20) / 16 * 9]
@@ -294,23 +293,23 @@ class Game:
         server_port=50051,
         server_ip="127.0.0.1",
     ):
-        self.map_dir = map_dir
-        self.indoor_locations = None
-        self.outdoor_locations = None
-        self.available_actions = None
-        self.engine_dir = engine_dir
-        self.engine_log_dir = engine_log_dir
-        self.server_ip = server_ip
-        self.server_port = server_port
+        self.__map_dir = map_dir
+        self.__indoor_locations = None
+        self.__outdoor_locations = None
+        self.__available_actions = None
+        self.__engine_dir = engine_dir
+        self.__engine_log_dir = engine_log_dir
+        self.__server_ip = server_ip
+        self.__server_port = server_port
 
-        # initialize default values
-        self.GM = self.__get_default_GM()
-        self.set_map_id(self.GM.map_id)
+        # initialize default game settings
+        self.__GM = self.__get_default_GM()
+        self.__use_depth_map = False
+        self.__ray_tracer = None
+
+        # initialize default map and agent
+        self.set_map_id(self.__GM.map_id)
         self.add_agent(agent_name="agent_0")
-        self.use_depth_map = False
-        self.scale_factor = 1
-        self.mesh_file_path = f"{self.map_dir}/{self.GM.map_id:03d}.obj"
-        self.ray_tracer = RaycastManager(self.mesh_file_path, self.scale_factor, self.MAX_VISION_DEPTH)
 
     def __get_default_GM(self):
         gm_command = simple_command_pb2.GMCommand()
@@ -348,77 +347,83 @@ class Game:
 
         return gm_command
 
-    def set_game_config(self, config_path: str):
+    # TODO: make this function more available to the user
+    def __set_game_config(self, config_path: str):
         """Experimental: Set game config from a yaml file"""
         game_config = load_json(config_path)
-        self.GM.Clear()
-        set_GM_command(self.GM, game_config)
+        self.__GM.Clear()
+        set_GM_command(self.__GM, game_config)
 
     def get_game_config(self):
-        return MessageToDict(self.GM)
+        game_config = MessageToDict(self.__GM)
+        game_config["use_depth_map"] = self.__use_depth_map
+        game_config["ray_tracer"] = self.__ray_tracer
+        return game_config
 
     def get_agent_name(self, agent_id):
-        for agent in self.GM.agent_setups:
+        for agent in self.__GM.agent_setups:
             if agent.id == agent_id:
                 return agent.agent_name
 
     def set_episode_timeout(self, timeout: int):
         assert isinstance(timeout, int) and timeout > 0
-        self.GM.timeout = timeout
+        self.__GM.timeout = timeout
 
     def set_game_mode(self, game_mode: int):
         assert game_mode in [0, 1, 2]
-        self.GM.game_mode = game_mode
+        self.__GM.game_mode = game_mode
 
     def set_map_id(self, map_id: int):
         assert isinstance(map_id, int) and 1 <= map_id <= 100
-        locations = load_json(f"{self.map_dir}/{map_id:03d}.json")
-        self.indoor_locations = locations["indoor"]
-        self.outdoor_locations = locations["outdoor"]
-        self.GM.map_id = map_id
+        location_file_path = os.path.join(self.__map_dir, f"{map_id:03d}.json")
+        locations = load_json(location_file_path)
+        self.__indoor_locations = locations["indoor"]
+        self.__outdoor_locations = locations["outdoor"]
+        self.__GM.map_id = map_id
+        self.__valid_locations = locations
 
     def get_valid_locations(self):
-        return self.valid_locations
+        return self.__valid_locations.copy()
 
     def set_random_seed(self, random_seed: int):
         assert isinstance(random_seed, int)
-        self.GM.random_seed = random_seed
+        self.__GM.random_seed = random_seed
 
     def set_start_location(self, loc: List[float], agent_id: int = 0):
-        assert isinstance(agent_id, int) and 0 <= agent_id < len(self.GM.agent_setups)
+        assert isinstance(agent_id, int) and 0 <= agent_id < len(self.__GM.agent_setups)
         assert isinstance(loc, list) and len(loc) == 3
-        agent = self.GM.agent_setups[agent_id]
+        agent = self.__GM.agent_setups[agent_id]
         set_vector3d(agent.start_location, loc)
 
     def get_start_location(self, agent_id: int = 0):
-        for agent in self.GM.agent_setups:
+        for agent in self.__GM.agent_setups:
             if agent.id == agent_id:
-                loc = agent.start_location
-                return [loc.x, loc.y, loc.z]
+                return vector3d_to_list(agent.start_location)
 
     def random_start_location(self, agent_id: int = 0, indoor: bool = False):
-        assert isinstance(agent_id, int) and 0 <= agent_id < len(self.GM.agent_setups)
-        agent = self.GM.agent_setups[agent_id]
-        locations = self.indoor_locations if indoor else self.outdoor_locations
+        assert isinstance(agent_id, int) and 0 <= agent_id < len(self.__GM.agent_setups)
+        agent = self.__GM.agent_setups[agent_id]
+        locations = self.__indoor_locations if indoor else self.__outdoor_locations
         loc = random.choice(locations)
         set_vector3d(agent.start_location, loc)
 
     def set_target_location(self, loc: List[float]):
         assert isinstance(loc, list) and len(loc) == 3
-        set_vector3d(self.GM.target_location, loc)
+        set_vector3d(self.__GM.target_location, loc)
 
     def get_target_location(self):
-        loc = self.GM.target_location
-        return loc.x, loc.y, loc.z
+        return vector3d_to_list(self.__GM.target_location)
 
     def set_available_actions(self, actions: List[str]):
         assert isinstance(actions, list) and len(actions) >= 1
-        self.available_actions = actions
-        self.action_idx_map = {key: i for i, key in enumerate(self.available_actions)}
+        self.__available_actions = actions
+        self.__action_idx_map = {
+            key: i for i, key in enumerate(self.__available_actions)
+        }
 
     def set_game_replay_suffix(self, replay_suffix: str):
         assert isinstance(replay_suffix, str)
-        self.GM.replay_suffix = replay_suffix
+        self.__GM.replay_suffix = replay_suffix
 
     def set_supply_heatmap_center(self, loc: List[float]):
         """loc: a list of two numbers that represent the x and z values of the center location"""
@@ -426,33 +431,33 @@ class Game:
         assert -150 <= loc[0] <= 150
         assert -150 <= loc[1] <= 150
         center = [loc[0], 0, loc[1]]
-        set_vector3d(self.GM.supply_heatmap_center, center)
+        set_vector3d(self.__GM.supply_heatmap_center, center)
 
     def set_supply_heatmap_radius(self, radius: int):
         assert isinstance(radius, int) and 1 <= radius <= 200
-        self.GM.supply_heatmap_radius = radius
+        self.__GM.supply_heatmap_radius = radius
 
     def set_supply_outdoor_richness(self, richness: int):
         assert isinstance(richness, int) and 0 <= richness <= 50
-        self.GM.supply_create_percent = richness
+        self.__GM.supply_create_percent = richness
 
     def set_supply_indoor_richness(self, richness: int):
         assert isinstance(richness, int) and 0 <= richness <= 100
-        self.GM.supply_house_create_percent = richness
+        self.__GM.supply_house_create_percent = richness
 
     def set_supply_spacing(self, spacing: int):
         assert isinstance(spacing, int) and spacing >= 1
-        self.GM.supply_grid_length = spacing
+        self.__GM.supply_grid_length = spacing
 
     def set_supply_outdoor_quantity_range(self, qmin=1, qmax=1):
         assert isinstance(qmin, int) and isinstance(qmax, int) and 1 <= qmin <= qmax
-        self.GM.supply_random_min = qmin
-        self.GM.supply_random_max = qmax
+        self.__GM.supply_random_min = qmin
+        self.__GM.supply_random_max = qmax
 
     def set_supply_indoor_quantity_range(self, qmin=1, qmax=1):
         assert isinstance(qmin, int) and isinstance(qmax, int) and 1 <= qmin <= qmax
-        self.GM.supply_house_random_min = qmin
-        self.GM.supply_house_random_max = qmax
+        self.__GM.supply_house_random_min = qmin
+        self.__GM.supply_house_random_max = qmax
 
     def add_supply_refresh(
         self,
@@ -470,7 +475,7 @@ class Game:
         assert isinstance(indoor_richness, int) and 0 <= indoor_richness <= 100
         assert isinstance(outdoor_richness, int) and 0 <= outdoor_richness <= 50
 
-        refresh = self.GM.supply_refresh_datas.add()
+        refresh = self.__GM.supply_refresh_datas.add()
         center = [heatmap_center[0], 0, heatmap_center[1]]
         set_vector3d(refresh.supply_heatmap_center, center)
         refresh.supply_heatmap_radius = heatmap_radius
@@ -493,8 +498,8 @@ class Game:
         assert isinstance(num_pack_ammo, int) and num_pack_ammo >= 0
         assert isinstance(attack, int) and attack >= 1
 
-        agent = self.GM.agent_setups.add()
-        agent_name = agent_name or f"agent_{self.GM.num_agents}"
+        agent = self.__GM.agent_setups.add()
+        agent_name = agent_name or f"agent_{self.__GM.num_agents}"
 
         assert isinstance(agent_name, str) and len(agent_name) > 0
 
@@ -503,37 +508,44 @@ class Game:
         agent.gun_capacity = num_clip_ammo
         agent.attack_power = attack
         agent.agent_name = agent_name
-        agent.id = self.GM.num_agents
+        agent.id = self.__GM.num_agents
         set_vector3d(agent.start_location, start_location)
 
-        self.GM.num_agents += 1
+        self.__GM.num_agents += 1
 
     def turn_on_record(self):
-        self.GM.is_record = True
+        self.__GM.is_record = True
 
     def turn_off_record(self):
-        self.GM.is_record = False
+        self.__GM.is_record = False
 
     def turn_on_depth_map(self):
-        self.use_depth_map = True
+        self.__use_depth_map = True
+        self.__ray_tracer = RaycastManager()
 
     def turn_off_depth_map(self):
-        self.use_depth_map = False
+        self.__use_depth_map = False
+        self.__ray_tracer = None
 
     def get_depth_map_size(self):
-        return self.ray_tracer.WIDTH, self.ray_tracer.HEIGHT, self.ray_tracer.DEPTH
+        assert self.__ray_tracer is not None
+        return self.__ray_tracer.WIDTH, self.__ray_tracer.HEIGHT, self.__ray_tracer.FAR
 
-    def set_depth_map_scale(self, factor=1):
-        self.scale_factor = factor
+    def set_depth_map_size(self, width, height, far=None):
+        assert self.__ray_tracer is not None
+        self.__ray_tracer.WIDTH = width
+        self.__ray_tracer.HEIGHT = height
+        if far is not None:
+            self.__ray_tracer.FAR = far
 
     def get_frame_count(self):
         return self.latest_request.time_step
 
     def get_target_reach_distance(self):
-        return self.GM.trigger_range
+        return self.__GM.trigger_range
 
     def init(self):
-        assert len(self.available_actions) > 0
+        assert len(self.__available_actions) > 0
         self.request_queue = Queue()
         self.reply_queue = Queue()
 
@@ -542,27 +554,32 @@ class Game:
         simple_command_pb2_grpc.add_CommanderServicer_to_server(
             QueueServer(self.request_queue, self.reply_queue), self.server
         )
-        self.server.add_insecure_port(f"[::]:{self.server_port}")
+        self.server.add_insecure_port(f"[::]:{self.__server_port}")
         self.server.start()
         print("Server started ...")
 
         if sys.platform.startswith("linux"):
-            engine_path = os.path.join(self.engine_dir, "fps.x86_64")
+            engine_path = os.path.join(self.__engine_dir, "fps.x86_64")
             os.system(f"chmod +x {engine_path}")
-            cmd = f"{engine_path} -IP:{self.server_ip} -PORT:{self.server_port}"
+            cmd = f"{engine_path} -IP:{self.__server_ip} -PORT:{self.__server_port}"
         elif sys.platform.startswith("win32"):
-            engine_path = os.path.join(self.engine_dir, "FPSGameUnity")
-            cmd = f"start {engine_path} -IP:{self.server_ip} -PORT:{self.server_port}"
+            engine_path = os.path.join(self.__engine_dir, "FPSGameUnity.exe")
+            cmd = (
+                f"start {engine_path} -IP:{self.__server_ip} -PORT:{self.__server_port}"
+            )
         elif sys.platform.startswith("darwin"):
-            engine_path = os.path.join(self.engine_dir, "fps_main.app")
-            cmd = f"open {engine_path} -IP:{self.server_ip} -PORT:{self.server_port}"
+            engine_path = self.__engine_dir
+            assert engine_path.endswith(".app"), "engine_dir must be a .app on MacOS"
+            cmd = (
+                f"open {engine_path} -IP:{self.__server_ip} -PORT:{self.__server_port}"
+            )
         else:
             raise NotImplementedError(f"Platform {sys.platform} is not supported")
 
-        os.makedirs(self.engine_log_dir, exist_ok=True)
+        os.makedirs(self.__engine_log_dir, exist_ok=True)
         timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-        engine_log_name = f"{timestamp}-port-{self.server_port}.log"
-        engine_log_path = os.path.join(self.engine_log_dir, engine_log_name)
+        engine_log_name = f"{timestamp}-port-{self.__server_port}.log"
+        engine_log_path = os.path.join(self.__engine_log_dir, engine_log_name)
 
         # start unity3d game engine
         with open(engine_log_path, "w") as f:
@@ -573,18 +590,18 @@ class Game:
         self.request_queue.get()  # the first request is only used to activate the server
         print("Unity3D connected ...")
 
-    def get_state(self, agent_id=0):
+    def get_state(self, agent_id=0) -> AgentState:
         for obs_data in self.latest_request.agent_obs_list:
             if obs_data.id == agent_id:
                 return AgentState(
                     obs_data,
                     self.latest_request.time_step,
                     self.latest_request.game_state,
-                    self.ray_tracer,
-                    self.use_depth_map,
+                    self.__ray_tracer,
+                    self.__use_depth_map,
                 )
 
-    def get_state_all(self):
+    def get_state_all(self) -> Dict[int, AgentState]:
         state_dict = {}
         time_step = self.latest_request.time_step
         game_state = self.latest_request.game_state
@@ -592,11 +609,11 @@ class Game:
         for obs_data in self.latest_request.agent_obs_list:
             agent_id = obs_data.id
             state_dict[agent_id] = AgentState(
-                obs_data, time_step, game_state, self.ray_tracer, self.use_depth_map
+                obs_data, time_step, game_state, self.__ray_tracer, self.__use_depth_map
             )
         return state_dict
 
-    def make_action(self, action_cmd_dict):
+    def make_action(self, action_cmd_dict: Dict[int, List]):
         """
         Parameters
         ----------
@@ -610,7 +627,7 @@ class Game:
         for agent_id, action in action_cmd_dict.items():
             agent_cmd = reply.agent_cmd_list.add()
             agent_cmd.id = agent_id
-            for action_name, idx in self.action_idx_map.items():
+            for action_name, idx in self.__action_idx_map.items():
                 setattr(agent_cmd, action_name, action[idx])
 
         self.reply_queue.put(reply)
@@ -623,16 +640,18 @@ class Game:
     def new_episode(self):
         reply = simple_command_pb2.A2S_Reply_Data()
         reply.game_state = simple_command_pb2.GameState.reset
-        reply.gm_cmd.CopyFrom(self.GM)
+        reply.gm_cmd.CopyFrom(self.__GM)
         self.reply_queue.put(reply)
         self.lastest_reply = reply
         self.latest_request = self.request_queue.get()
         print("Started new episode ...")
 
-        mesh_file_path = f"{self.map_dir}/{self.GM.map_id:03d}.obj"
-        self.ray_tracer.update_mesh(mesh_file_path)
-        self.ray_tracer.update_scale(self.scale_factor)
-        print(f"Map {self.GM.map_id:03d} loaded ...")
+        if self.__use_depth_map:
+            mesh_name = f"{self.__GM.map_id:03d}.obj"
+            mesh_file_path = os.path.join(self.__map_dir, mesh_name)
+            self.__ray_tracer.update_mesh(mesh_file_path)
+
+        print(f"Map {self.__GM.map_id:03d} loaded ...")
 
     def close(self):
         reply = simple_command_pb2.A2S_Reply_Data()
@@ -645,6 +664,10 @@ class Game:
         self.engine_process.kill()
         print("Unity3D killed ...")
 
+    @property
+    def use_depth_map(self):
+        return self.__use_depth_map
+
 
 if __name__ == "__main__":
     import argparse
@@ -654,10 +677,10 @@ if __name__ == "__main__":
     console = Console()
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-P", "--port", type=int, default=50051)
-    parser.add_argument("-T", "--timeout", type=int, default=10)
-    parser.add_argument("-M", "--game-mode", type=int, default=0)
-    parser.add_argument("-S", "--random-seed", type=int, default=0)
+    parser.add_argument("--port", type=int, default=50051)
+    parser.add_argument("--timeout", type=int, default=10)
+    parser.add_argument("--game-mode", type=int, default=0)
+    parser.add_argument("--random-seed", type=int, default=0)
     parser.add_argument("--map-id-list", type=int, nargs="+", default=[1])
     parser.add_argument("--num-agents", type=int, default=1)
     parser.add_argument("--use-depth-map", action="store_true")
@@ -666,9 +689,13 @@ if __name__ == "__main__":
     parser.add_argument("--start-location", type=float, nargs=3, default=[0, 0, 0])
     parser.add_argument("--target-location", type=float, nargs=3, default=[5, 0, 5])
     parser.add_argument("--walk-speed", type=float, default=1)
-    parser.add_argument("--map-dir", type=str, default="../map_data")
+    parser.add_argument("--map-dir", type=str, default=None)
     args = parser.parse_args()
-    console.print(args)
+
+    if args.map_dir is None:
+        args.map_dir = os.path.expanduser("~/map_data")
+
+    console.print(args, style="bold magenta")
 
     def get_picth_yaw(x, y, z):
         pitch = np.arctan2(y, (x**2 + z**2) ** 0.5) / np.pi * 180
@@ -706,6 +733,7 @@ if __name__ == "__main__":
     game.set_start_location(args.start_location)
     game.set_target_location(args.target_location)
     game.set_available_actions(used_actions)
+    game.set_game_replay_suffix(args.replay_suffix)
 
     if args.use_depth_map:
         game.turn_on_depth_map()
@@ -719,37 +747,42 @@ if __name__ == "__main__":
     game.init()
 
     for map_id in track(args.map_id_list, description="Running Maps ..."):
-        game.set_game_replay_suffix(f"{args.replay_suffix}_map_{map_id:03d}")
         game.set_map_id(map_id)
+        w, h, f = [random.randint(10, 50) for _ in range(3)]
+        game.set_depth_map_size(w, h, f)
         game.new_episode()
 
+        console.print(game.get_game_config(), style="bold magenta")
+
         while not game.is_episode_finished():
-            t = time.time()
+            t = time.perf_counter()
             state_all = game.get_state_all()
             action_all = {
                 agent_id: my_policy(state_all[agent_id]) for agent_id in state_all
             }
             game.make_action(action_all)
-            dt = time.time() - t
+            dt = time.perf_counter() - t
 
-            agent_id = 0
-            state = state_all[agent_id]
-            step_info = {
-                "Map ID": map_id,
-                "GameState": state.game_state,
-                "TimeStep": state.time_step,
-                "AgentID": agent_id,
-                "Location": get_position(state),
-                "Action": {
-                    name: val for name, val in zip(used_actions, action_all[agent_id])
-                },
-                "#SupplyInfo": len(state.supply_states),
-                "#EnemyInfo": len(state.enemy_states),
-                "StepRate": round(1 / dt),
-            }
-            if state.depth_map is not None:
-                step_info["DepthMap"] = state.depth_map.shape
-            console.print(step_info, style="bold magenta")
+            # agent_id = 0
+            # state = state_all[agent_id]
+            # step_info = {
+            #     "Map ID": map_id,
+            #     "GameState": state.game_state,
+            #     "TimeStep": state.time_step,
+            #     "AgentID": agent_id,
+            #     "Location": get_position(state),
+            #     "Action": {
+            #         name: val for name, val in zip(used_actions, action_all[agent_id])
+            #     },
+            #     "#SupplyInfo": len(state.supply_states),
+            #     "#EnemyInfo": len(state.enemy_states),
+            #     "StepRate": round(1 / dt),
+            # }
+            # if state.depth_map is not None:
+            #     step_info["DepthMap"] = state.depth_map.shape
+            # console.print(step_info, style="bold magenta")
+            console.print(state_all, style="bold magenta")
+            console.print(action_all, style="bold magenta")
 
         print("episode ended ...")
 
