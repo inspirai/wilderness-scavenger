@@ -126,7 +126,8 @@ class RaycastManager(object):
             cam_pos = np.array(position_in_mesh[i * 3 : i * 3 + 3])
             cam_param_array_double[i, 0:3] = cam_pos
             cam_param_array_double[i, 3:6] = cam_lookat
-            cam_param_array_double[i, 6:9] = [0, 0, 1]
+            # cam_param_array_double[i, 6:9] = [0, 0, 1]
+            cam_param_array_double[i, 6:9] = [0, 1, 0]
             cam_param_array_double[i, 9:10] = 1.0
             cam_param_array_double[i, 10:16] = perspective_frustum(
                 hw_ratio=float(height) / width, x_fov=0.85, znear=0.01, zfar=far
