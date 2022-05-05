@@ -129,7 +129,7 @@ class RaycastManager(object):
             cam_param_array_double[i, 6:9] = [0, 0, 1]
             cam_param_array_double[i, 9:10] = 1.0
             cam_param_array_double[i, 10:16] = perspective_frustum(
-                hw_ratio=float(height) / width, x_fov=0.85, znear=1, zfar=far
+                hw_ratio=float(height) / width, x_fov=0.85, znear=0.01, zfar=far
             )
             cam_param_array_double[i, 16:18] = [height, width]
 

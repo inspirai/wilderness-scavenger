@@ -54,8 +54,8 @@ We developed this repository to provide a training and evaluation platform for t
 We support the multiple platforms with different engine backends, including:
 
 - Linux: download the engine [here](https://drive.google.com/file/d/1HAZgr2jcVHq_-ThkVbg9jUbIVfMorudp/view?usp=sharing)
-- Windows: will be supported soon
-- MacOS: will be supported soon
+- Windows: download the engine [here](https://drive.google.com/file/d/1CEpiFPpx5NsWgqL8yzaZQX9fGuyPUKDy/view?usp=sharing)
+- MacOS: download the engine [here](https://drive.google.com/file/d/1hgQa5OPve4QCBczLEGeOis2HhHbxI68m/view?usp=sharing)
 
 ## Installation (from source)
 
@@ -105,7 +105,7 @@ To get access to some features like realtime depth map computation or randomized
 2. Set `map_dir` parameter of the `Game` initializer accordingly
 3. Set the `map_id` as you like
 4. Turn on the function of depth map computation
-5. Turn on random start location for agent spwaning
+5. Turn on random start location to spawn agents at random places
 
 Read the following code snippet in the script `examples/basic.py` as an example:
 
@@ -135,7 +135,7 @@ game.new_episode()  # start a new episode, this will load the mesh of the specif
 We have also developed a replay visualization tool based on the Unity3D game engine. It is similar to the spectator mode common in multiplayer FPS games, which allows users to interactively follow the gameplay. Users can view an agent's action from different perspectives and also switch between multiple agents or different viewing modes (e.g., first person, third person, free) to see the entire game in a more immersive way. Participants can download the tool for their specific platforms here:
 
 - Windows: download the replay tool [here](https://drive.google.com/file/d/1YIEGnjKaH_KzycwJK5WKEGMVn8dls7dR/view?usp=sharing)
-- MacOS: will be supported soon
+- MacOS: download the replay tool [here]()
 
 To use this tool, follow the instruction below:
 
