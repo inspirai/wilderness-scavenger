@@ -83,6 +83,8 @@ for ep in track(range(args.num_episodes), description="Running Episodes ..."):
     game.new_episode()
 
     while not game.is_episode_finished():
+        ts = game.get_time_step()
+
         t = time.perf_counter()
         state_all = game.get_state_all()
         action_all = {
@@ -91,24 +93,22 @@ for ep in track(range(args.num_episodes), description="Running Episodes ..."):
         game.make_action(action_all)
         dt = time.perf_counter() - t
 
-        agent_id = 0
-        state = state_all[agent_id]
-        step_info = {
-            "Episode": ep,
-            "GameState": state.game_state,
-            "TimeStep": state.time_step,
-            "AgentID": agent_id,
-            "Location": get_position(state),
-            "Action": {
-                name: val for name, val in zip(used_actions, action_all[agent_id])
-            },
-            "#SupplyInfo": len(state.supply_states),
-            "#EnemyInfo": len(state.enemy_states),
-            "StepRate": round(1 / dt),
-        }
-        if args.use_depth_map:
-            step_info["DepthMap"] = state.depth_map.shape
-        console.print(step_info, style="bold magenta")
+        for agent_id, state in state_all.items():
+            step_info = {
+                "Episode": ep,
+                "TimeStep": ts,
+                "AgentID": agent_id,
+                "Location": get_position(state),
+                "Action": {
+                    name: val for name, val in zip(used_actions, action_all[agent_id])
+                },
+                "#SupplyInfo": len(state.supply_states),
+                "#EnemyInfo": len(state.enemy_states),
+                "StepRate": round(1 / dt),
+            }
+            if args.use_depth_map:
+                step_info["DepthMap"] = state.depth_map.shape
+            console.print(step_info, style="bold magenta")
 
     print("episode ended ...")
 

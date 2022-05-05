@@ -1,6 +1,6 @@
 # Wilderness Scavenger: 3D Open-World FPS Game AI Challenge
 
-This is a platform for intelligent agent learning based on a 3D open-world FPS game developed by Inspir.AI.
+This is a platform for intelligent agent learning based on a 3D open-world FPS game developed by **Inspir.AI**.
 
 ## Competition Overview
 
@@ -50,11 +50,14 @@ We developed this repository to provide a training and evaluation platform for t
 - `examples`: we provide basic starter codes for each game mode targeting each track of the challenge, and we also give out our implementation of some baseline solutions based on [`ray.rllib`](https://docs.ray.io/en/master/rllib/index.html) reinforcement learning framework.
 
 ## Supported Platforms
+
 We support the multiple platforms with different engine backends, including:
 
-- Linux: download the engine [here](https://drive.google.com/file/d/1HAZgr2jcVHq_-ThkVbg9jUbIVfMorudp/view?usp=sharing)
-- Windows: will be supported soon
-- MacOS: will be supported soon
+<!-- - Windows: download the engine [here](https://drive.google.com/file/d/1CEpiFPpx5NsWgqL8yzaZQX9fGuyPUKDy/view?usp=sharing)
+- MacOS: download the engine [here](https://drive.google.com/file/d/1hgQa5OPve4QCBczLEGeOis2HhHbxI68m/view?usp=sharing) -->
+- Linux: download the engine from [Google Drive]() or [Feishu]()
+- Windows: download the engine from [Google Drive]() or [Feishu]()
+- MacOS: download the engine from [Google Drive]() or [Feishu]()
 
 ## Installation (from source)
 
@@ -100,14 +103,11 @@ game = Game(..., engine_dir=args.engine_dir, ...)
 
 To get access to some features like realtime depth map computation or randomized player spawning, you need to load the map data and load them into the `Game`. After this, once you turn on the depth map rendering, the game server will automatically compute a depth map viewing from the player's first person perspective at each time step.
 
-<!-- 1. Download world meshes from [data_meshes](https://drive.google.com/file/d/1SY43c5Gg8x-bxzqIazxuV8vOKCAh4LI2/view?usp=sharing) and the valid location lists from [data_locations](https://drive.google.com/file/d/1g_oC9hC7mrlKeDUtyU-y-izlblQRIp-D/view?usp=sharing) -->
-<!-- 2. Unzip all mesh (`xxx.obj`) and location (`xxx.json`) files to the same folder (e.g. `'<WORKDIR>/map_data'`) -->
-
-1. Download map data [here](https://drive.google.com/file/d/1QGrKfnVZ2Z7f2JPjLbYAQy5Pv6y8vz3p/view?usp=sharing) and decompress the downloaded file to your preferred directory (e.g., `<WORKDIR>/map_data`).
+1. Download map data from [Google Drive](https://drive.google.com/file/d/1QGrKfnVZ2Z7f2JPjLbYAQy5Pv6y8vz3p/view?usp=sharing) or [Feishu](https://inspirai.feishu.cn/file/boxcnjVwcVTSZPnwB1whheQsGKf) and decompress the downloaded file to your preferred directory (e.g., `<WORKDIR>/map_data`).
 2. Set `map_dir` parameter of the `Game` initializer accordingly
 3. Set the `map_id` as you like
 4. Turn on the function of depth map computation
-5. Turn on random start location for agent spwaning
+5. Turn on random start location to spawn agents at random places
 
 Read the following code snippet in the script `examples/basic.py` as an example:
 
@@ -136,8 +136,8 @@ game.new_episode()  # start a new episode, this will load the mesh of the specif
 
 We have also developed a replay visualization tool based on the Unity3D game engine. It is similar to the spectator mode common in multiplayer FPS games, which allows users to interactively follow the gameplay. Users can view an agent's action from different perspectives and also switch between multiple agents or different viewing modes (e.g., first person, third person, free) to see the entire game in a more immersive way. Participants can download the tool for their specific platforms here:
 
-- Windows: download the replay tool [here](https://drive.google.com/file/d/1YIEGnjKaH_KzycwJK5WKEGMVn8dls7dR/view?usp=sharing)
-- MacOS: will be supported soon
+- Windows: download the replay tool from [Google Drive](https://drive.google.com/file/d/1YIEGnjKaH_KzycwJK5WKEGMVn8dls7dR/view?usp=sharing) or [Feishu](https://inspirai.feishu.cn/file/boxcni1jx6ve3owGTX8cGuciwfh)
+- MacOS: download the replay tool from [Google Drive](https://drive.google.com/file/d/1QKfMmF_4FZc2hJ2cEzD6psv6jr21rC_L/view?usp=sharing) or [Feishu](https://inspirai.feishu.cn/file/boxcnBauh8ZpPtyl8NhPUTynYFd)
 
 To use this tool, follow the instruction below:
 

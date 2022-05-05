@@ -39,8 +39,10 @@ class QueueServer(simple_command_pb2_grpc.CommanderServicer):
         self.reply_queue = reply_queue
 
     def Request_S2A_UpdateGame(self, request, context):
+        # print(request)
         self.request_queue.put(request)
         reply = self.reply_queue.get()
+        # print(reply)
         return reply
 
 
@@ -143,8 +145,6 @@ class EnemyStateRough:
 class AgentState:
     """
     wrap all perceivable information from the agent, including:
-    - time_step `int`: how many steps the game has run for
-    - game_state `int`: current state of the game (update | over)
     - position_[xyz] `List[float]`: the 3d space coordinates (unit: M)
     - move_dir_[xyz] `List[float]`: the 3d space moving direction (which is a 3-dim unit vector)
     - move_speed `float`: the moving speed of the agent in the 3d space (unit: M/S)
@@ -164,21 +164,14 @@ class AgentState:
     - depth_map `Iterable[Iterable[float]]`: an H x W array representing the depth of mesh point in the agent's visual-sight window (if turned off this is `None`)
     """
 
+    __SUPPLY_VIS_DISTANCE = 20
+
     def __init__(
         self,
         obs_data,
-        time_step,
-        game_state,
         ray_tracer,
         use_depth_map=False,
-        supply_visible_distance=np.Inf,
     ) -> None:
-
-        self.ray_tracer = ray_tracer
-        self.supply_visible_distance = supply_visible_distance
-
-        self.time_step = time_step  # TODO: remove this
-        self.game_state = game_state  # TODO: remove this
         self.position_x = obs_data.location.x
         self.position_y = obs_data.location.y
         self.position_z = obs_data.location.z
@@ -186,8 +179,10 @@ class AgentState:
         self.move_dir_y = obs_data.move_dir.y
         self.move_dir_z = obs_data.move_dir.z
         self.move_speed = obs_data.move_speed
-        self.pitch = obs_data.pitch
-        self.yaw = obs_data.yaw
+        self.pitch = obs_data.pitch  # [-90, 90]
+        self.yaw = (
+            obs_data.yaw if obs_data.yaw <= 180 else obs_data.yaw - 360
+        )  # (-180, 180]
         self.health = obs_data.hp
         self.weapon_ammo = obs_data.num_gun_ammo
         self.spare_ammo = obs_data.num_pack_ammo
@@ -200,6 +195,8 @@ class AgentState:
         self.is_waiting_respawn = obs_data.is_waiting_respawn
         self.is_invincible = obs_data.is_invincible
 
+        self.ray_tracer = ray_tracer
+
         self.depth_map = None
         if use_depth_map:
             pos = get_position(self)
@@ -210,6 +207,7 @@ class AgentState:
             SupplyState(s)
             for s in filter(self.is_supply_visible, obs_data.supply_info_list)
         ]
+
         self.enemy_states = [
             EnemyStateDetailed(e)
             for e in filter(self.is_enemy_visible, obs_data.enemy_info_list)
@@ -219,7 +217,14 @@ class AgentState:
         x = self.position_x
         y = self.position_y
         z = self.position_z
-        return f"GameState[ts={self.time_step}][x={x:.2f},y={y:.2f},z={z:.2f}][supply={self.num_supply}][gun_ammo={self.weapon_ammo}][pack_ammo={self.spare_ammo}][hp={self.health}]"
+        pos = [round(p, 2) for p in (x, y, z)]
+
+        dx = self.move_dir_x
+        dy = self.move_dir_y
+        dz = self.move_dir_z
+        dir = [round(d, 2) for d in (dx, dy, dz)]
+
+        return f"AgentState(pos={pos},dir={dir},speed={self.move_speed},pitch={self.pitch},yaw={self.yaw},health={self.health},weapon_ammo={self.weapon_ammo},spare_ammo={self.spare_ammo},on_ground={self.on_ground},is_attack={self.is_attack},is_reload={self.is_reload},hit_enemy={self.hit_enemy},hit_by_enemy={self.hit_by_enemy},num_supply={self.num_supply},is_waiting_respawn={self.is_waiting_respawn},is_invincible={self.is_invincible},use_depth_map={self.depth_map is not None})"
 
     def is_enemy_visible(self, enemy_info: simple_command_pb2.EnemyInfo):
         view_angle = [90 + 20, (90 + 20) / 16 * 9]
@@ -267,7 +272,7 @@ class AgentState:
         supply_pos = vector3d_to_list(supply_info.supply_location)
         self_pos = get_position(self)
         distance = get_distance(self_pos, supply_pos)
-        return distance <= self.supply_visible_distance
+        return distance <= self.__SUPPLY_VIS_DISTANCE
 
 
 class Game:
@@ -277,13 +282,12 @@ class Game:
     MODE_SUP_BATTLE = simple_command_pb2.GameModeType.SUP_BATTLE_MODE
 
     # game config constants that are not changeable by the user
-    SPEED_UP_FACTOR = 10
-    TRIGGER_DISTANCE = 1
-    WATER_SPEED_DECAY = 0.5
-    INVINCIBLE_TIME = 10
-    RESPAWN_TIME = 10
-    SUPPLY_DROP_PERCENT = 50
-    MAX_VISION_DEPTH = 100
+    __SPEED_UP_FACTOR = 10
+    __TRIGGER_DISTANCE = 1
+    __WATER_SPEED_DECAY = 0.5
+    __INVINCIBLE_TIME = 10
+    __RESPAWN_TIME = 10
+    __SUPPLY_DROP_PERCENT = 50
 
     def __init__(
         self,
@@ -305,49 +309,50 @@ class Game:
         # initialize default game settings
         self.__GM = self.__get_default_GM()
         self.__use_depth_map = False
-        self.__ray_tracer = None
+        self.__ray_tracer = RaycastManager()
 
-        # initialize default map and agent
-        self.set_map_id(self.__GM.map_id)
+        # initialize default agent
         self.add_agent(agent_name="agent_0")
+
+        # load default map
+        self.set_map_id(1)
 
     def __get_default_GM(self):
         gm_command = simple_command_pb2.GMCommand()
 
         # Common settings
-        gm_command.timeout = 60
+        gm_command.timeout = 10
         gm_command.game_mode = Game.MODE_NAVIGATION
-        gm_command.time_scale = Game.SPEED_UP_FACTOR
-        gm_command.map_id = 1
+        gm_command.time_scale = Game.__SPEED_UP_FACTOR
         gm_command.random_seed = 0
         gm_command.num_agents = 0
         gm_command.is_record = False
         gm_command.replay_suffix = ""
-        gm_command.water_speed_decay = Game.WATER_SPEED_DECAY
+        gm_command.water_speed_decay = Game.__WATER_SPEED_DECAY
 
         # ModeNavigation settings
         set_vector3d(gm_command.target_location, [1, 0, 1])
-        gm_command.trigger_range = Game.TRIGGER_DISTANCE
+        gm_command.trigger_range = Game.__TRIGGER_DISTANCE
 
         # ModeSupplyGather settings
         set_vector3d(gm_command.supply_heatmap_center, [0, 0, 0])
-        gm_command.supply_heatmap_radius = 50
-        gm_command.supply_create_percent = 50
-        gm_command.supply_house_create_percent = 50
-        gm_command.supply_grid_length = 3
+        gm_command.supply_heatmap_radius = 1
+        gm_command.supply_create_percent = 1
+        gm_command.supply_house_create_percent = 1
+        gm_command.supply_grid_length = 10
         gm_command.supply_random_min = 1
         gm_command.supply_random_max = 1
         gm_command.supply_house_random_min = 10
         gm_command.supply_house_random_max = 10
 
         # ModeSupplyBattle settings
-        gm_command.respawn_time = Game.RESPAWN_TIME
-        gm_command.invincible_time = Game.INVINCIBLE_TIME
-        gm_command.supply_loss_percent_when_dead = Game.SUPPLY_DROP_PERCENT
+        gm_command.respawn_time = Game.__RESPAWN_TIME
+        gm_command.invincible_time = Game.__INVINCIBLE_TIME
+        gm_command.supply_loss_percent_when_dead = Game.__SUPPLY_DROP_PERCENT
 
         return gm_command
 
-    # TODO: make this function more available to the user
+    # TODO: make this function available to the user
     def __set_game_config(self, config_path: str):
         """Experimental: Set game config from a yaml file"""
         game_config = load_json(config_path)
@@ -375,12 +380,21 @@ class Game:
 
     def set_map_id(self, map_id: int):
         assert isinstance(map_id, int) and 1 <= map_id <= 100
+        self.__GM.map_id = map_id
+
+        # load location data
         location_file_path = os.path.join(self.__map_dir, f"{map_id:03d}.json")
         locations = load_json(location_file_path)
         self.__indoor_locations = locations["indoor"]
         self.__outdoor_locations = locations["outdoor"]
-        self.__GM.map_id = map_id
         self.__valid_locations = locations
+
+        # load mesh data
+        mesh_name = f"{self.__GM.map_id:03d}.obj"
+        mesh_file_path = os.path.join(self.__map_dir, mesh_name)
+        self.__ray_tracer.update_mesh(mesh_file_path)
+
+        print(f"Map {self.__GM.map_id:03d} loaded ...")
 
     def get_valid_locations(self):
         return self.__valid_locations.copy()
@@ -521,24 +535,21 @@ class Game:
 
     def turn_on_depth_map(self):
         self.__use_depth_map = True
-        self.__ray_tracer = RaycastManager()
 
     def turn_off_depth_map(self):
         self.__use_depth_map = False
-        self.__ray_tracer = None
 
     def get_depth_map_size(self):
-        assert self.__ray_tracer is not None
         return self.__ray_tracer.WIDTH, self.__ray_tracer.HEIGHT, self.__ray_tracer.FAR
 
     def set_depth_map_size(self, width, height, far=None):
-        assert self.__ray_tracer is not None
         self.__ray_tracer.WIDTH = width
         self.__ray_tracer.HEIGHT = height
         if far is not None:
             self.__ray_tracer.FAR = far
 
-    def get_frame_count(self):
+    def get_time_step(self):
+        """ Returns the current time steps in game """
         return self.latest_request.time_step
 
     def get_target_reach_distance(self):
@@ -570,9 +581,7 @@ class Game:
         elif sys.platform.startswith("darwin"):
             engine_path = self.__engine_dir
             assert engine_path.endswith(".app"), "engine_dir must be a .app on MacOS"
-            cmd = (
-                f"open {engine_path} -IP:{self.__server_ip} -PORT:{self.__server_port}"
-            )
+            cmd = f"open {engine_path} --args -IP:{self.__server_ip} -PORT:{self.__server_port}"
         else:
             raise NotImplementedError(f"Platform {sys.platform} is not supported")
 
@@ -595,21 +604,16 @@ class Game:
             if obs_data.id == agent_id:
                 return AgentState(
                     obs_data,
-                    self.latest_request.time_step,
-                    self.latest_request.game_state,
                     self.__ray_tracer,
                     self.__use_depth_map,
                 )
 
     def get_state_all(self) -> Dict[int, AgentState]:
         state_dict = {}
-        time_step = self.latest_request.time_step
-        game_state = self.latest_request.game_state
-
         for obs_data in self.latest_request.agent_obs_list:
             agent_id = obs_data.id
             state_dict[agent_id] = AgentState(
-                obs_data, time_step, game_state, self.__ray_tracer, self.__use_depth_map
+                obs_data, self.__ray_tracer, self.__use_depth_map
             )
         return state_dict
 
@@ -645,13 +649,6 @@ class Game:
         self.lastest_reply = reply
         self.latest_request = self.request_queue.get()
         print("Started new episode ...")
-
-        if self.__use_depth_map:
-            mesh_name = f"{self.__GM.map_id:03d}.obj"
-            mesh_file_path = os.path.join(self.__map_dir, mesh_name)
-            self.__ray_tracer.update_mesh(mesh_file_path)
-
-        print(f"Map {self.__GM.map_id:03d} loaded ...")
 
     def close(self):
         reply = simple_command_pb2.A2S_Reply_Data()
@@ -709,14 +706,16 @@ if __name__ == "__main__":
         agent_location = [state.position_x, state.position_y, state.position_z]
         direction = [v2 - v1 for v1, v2 in zip(agent_location, target_location)]
         yaw = get_picth_yaw(*direction)[1]
-        turn_lr_delta = random.choice([1, 0, -1])
-        action = [yaw, walk_speed, turn_lr_delta, True]
+        turn_lr_delta = random.choice([2, 0, -2])
+        look_ud_delta = random.choice([1, 0, -1])
+        action = [yaw, walk_speed, turn_lr_delta, look_ud_delta, True]
         return action
 
     used_actions = [
         ActionVariable.WALK_DIR,
         ActionVariable.WALK_SPEED,
         ActionVariable.TURN_LR_DELTA,
+        ActionVariable.LOOK_UD_DELTA,
         ActionVariable.PICKUP,
     ]
 
@@ -748,13 +747,16 @@ if __name__ == "__main__":
 
     for map_id in track(args.map_id_list, description="Running Maps ..."):
         game.set_map_id(map_id)
-        w, h, f = [random.randint(10, 50) for _ in range(3)]
-        game.set_depth_map_size(w, h, f)
+        if game.use_depth_map:
+            w, h, f = [random.randint(10, 50) for _ in range(3)]
+            game.set_depth_map_size(w, h, f)
         game.new_episode()
 
         console.print(game.get_game_config(), style="bold magenta")
 
         while not game.is_episode_finished():
+            console.print(">>>>>>>> TimeStep:", game.get_time_step(), style="bold magenta")
+            
             t = time.perf_counter()
             state_all = game.get_state_all()
             action_all = {
@@ -763,26 +765,10 @@ if __name__ == "__main__":
             game.make_action(action_all)
             dt = time.perf_counter() - t
 
-            # agent_id = 0
-            # state = state_all[agent_id]
-            # step_info = {
-            #     "Map ID": map_id,
-            #     "GameState": state.game_state,
-            #     "TimeStep": state.time_step,
-            #     "AgentID": agent_id,
-            #     "Location": get_position(state),
-            #     "Action": {
-            #         name: val for name, val in zip(used_actions, action_all[agent_id])
-            #     },
-            #     "#SupplyInfo": len(state.supply_states),
-            #     "#EnemyInfo": len(state.enemy_states),
-            #     "StepRate": round(1 / dt),
-            # }
-            # if state.depth_map is not None:
-            #     step_info["DepthMap"] = state.depth_map.shape
-            # console.print(step_info, style="bold magenta")
             console.print(state_all, style="bold magenta")
-            console.print(action_all, style="bold magenta")
+            actions = {name: val for name, val in zip(used_actions, action_all[0])}
+            console.print(actions, style="bold magenta")
+            console.print("<<<<<<<<< StepRate:", round(1/dt), style="bold magenta")
 
         print("episode ended ...")
 
