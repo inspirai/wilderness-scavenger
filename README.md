@@ -135,7 +135,7 @@ game.new_episode()  # start a new episode, this will load the mesh of the specif
 We have also developed a replay visualization tool based on the Unity3D game engine. It is similar to the spectator mode common in multiplayer FPS games, which allows users to interactively follow the gameplay. Users can view an agent's action from different perspectives and also switch between multiple agents or different viewing modes (e.g., first person, third person, free) to see the entire game in a more immersive way. Participants can download the tool for their specific platforms here:
 
 - Windows: download the replay tool [here](https://drive.google.com/file/d/1YIEGnjKaH_KzycwJK5WKEGMVn8dls7dR/view?usp=sharing)
-- MacOS: download the replay tool [here]()
+- MacOS: download the replay tool [here](https://drive.google.com/file/d/1QKfMmF_4FZc2hJ2cEzD6psv6jr21rC_L/view?usp=sharing)
 
 To use this tool, follow the instruction below:
 
