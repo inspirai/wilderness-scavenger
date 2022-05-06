@@ -110,13 +110,10 @@ class RaycastManager(object):
         width = self.WIDTH
         far = self.FAR
 
-        # position_in_mesh = np.array([position[0], -position[1], position[2]]) / 100.0
         position_in_mesh = np.asarray(position)
         r = np.asarray(direction) * np.pi / 180
         cam_lookat = position_in_mesh + np.asarray(
-            # [np.cos(r[2]) * np.cos(r[1]), -np.sin(r[2]) * np.cos(r[1]), np.sin(r[1])]
-            # [-np.cos(r[2]) * np.cos(r[1]), np.sin(r[2]) * np.cos(r[1]), np.sin(r[1])]
-            [np.cos(r[2]) * np.cos(r[1]), np.sin(r[1]), -np.sin(r[2]) * np.cos(r[1])]
+            [np.cos(r[2]) * np.cos(r[1]), -np.sin(r[1]), -np.sin(r[2]) * np.cos(r[1])]
         )  # negative
 
         num_cameras = 1
@@ -128,7 +125,6 @@ class RaycastManager(object):
             cam_pos = np.array(position_in_mesh[i * 3 : i * 3 + 3])
             cam_param_array_double[i, 0:3] = cam_pos
             cam_param_array_double[i, 3:6] = cam_lookat
-            # cam_param_array_double[i, 6:9] = [0, 0, 1]
             cam_param_array_double[i, 6:9] = [0, 1, 0]
             cam_param_array_double[i, 9:10] = 1.0
             cam_param_array_double[i, 10:16] = perspective_frustum(

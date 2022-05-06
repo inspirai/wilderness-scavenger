@@ -186,8 +186,8 @@ class AgentState:
         self.move_dir_y = obs_data.move_dir.y
         self.move_dir_z = obs_data.move_dir.z
         self.move_speed = obs_data.move_speed
-        self.pitch = obs_data.pitch
-        self.yaw = obs_data.yaw
+        self.pitch = obs_data.pitch  # [-90, 90]
+        self.yaw = obs_data.yaw if obs_data.yaw <= 180 else obs_data.yaw - 360  # (-180, 180]
         self.health = obs_data.hp
         self.weapon_ammo = obs_data.num_gun_ammo
         self.spare_ammo = obs_data.num_pack_ammo
@@ -203,18 +203,14 @@ class AgentState:
 
         if use_depth_map:
             pos = get_position(self)
-            dir = [
-                0,
-                self.pitch,  # -90 to 90
-                self.yaw - 180  # -180 to 180
-            ]
+            dir = [0, self.pitch, self.yaw]
             self.depth_map = self.ray_tracer.get_depth(pos, dir)[0]
 
         self.supply_states = [
             SupplyState(s)
             for s in filter(self.is_supply_visible, obs_data.supply_info_list)
         ]
-        
+
         self.enemy_states = [
             EnemyStateDetailed(e)
             for e in filter(self.is_enemy_visible, obs_data.enemy_info_list)
@@ -224,7 +220,7 @@ class AgentState:
         x = self.position_x
         y = self.position_y
         z = self.position_z
-        return f"GameState[ts={self.time_step}][x={x:.2f},y={y:.2f},z={z:.2f}][supply={self.num_supply}][gun_ammo={self.weapon_ammo}][pack_ammo={self.spare_ammo}][hp={self.health}]"
+        return f"GameState[ts={self.time_step}][x={x:.2f},y={y:.2f},z={z:.2f}][supply={self.num_supply}][gun_ammo={self.weapon_ammo}][pack_ammo={self.spare_ammo}][hp={self.health}][pitch={self.pitch}][yaw={self.yaw}]"
 
     def is_enemy_visible(self, enemy_info: simple_command_pb2.EnemyInfo):
         view_angle = [90 + 20, (90 + 20) / 16 * 9]
@@ -310,7 +306,7 @@ class Game:
         # initialize default game settings
         self.__GM = self.__get_default_GM()
         self.__use_depth_map = False
-        self.__ray_tracer = None
+        self.__ray_tracer = RaycastManager()
 
         # initialize default map and agent
         self.set_map_id(self.__GM.map_id)
@@ -384,8 +380,8 @@ class Game:
         locations = load_json(location_file_path)
         self.__indoor_locations = locations["indoor"]
         self.__outdoor_locations = locations["outdoor"]
-        self.__GM.map_id = map_id
         self.__valid_locations = locations
+        self.__GM.map_id = map_id
 
     def get_valid_locations(self):
         return self.__valid_locations.copy()
@@ -526,18 +522,14 @@ class Game:
 
     def turn_on_depth_map(self):
         self.__use_depth_map = True
-        self.__ray_tracer = RaycastManager()
 
     def turn_off_depth_map(self):
         self.__use_depth_map = False
-        self.__ray_tracer = None
 
     def get_depth_map_size(self):
-        assert self.__ray_tracer is not None
         return self.__ray_tracer.WIDTH, self.__ray_tracer.HEIGHT, self.__ray_tracer.FAR
 
     def set_depth_map_size(self, width, height, far=None):
-        assert self.__ray_tracer is not None
         self.__ray_tracer.WIDTH = width
         self.__ray_tracer.HEIGHT = height
         if far is not None:
@@ -633,7 +625,13 @@ class Game:
             agent_cmd = reply.agent_cmd_list.add()
             agent_cmd.id = agent_id
             for action_name, idx in self.__action_idx_map.items():
-                setattr(agent_cmd, action_name, action[idx])
+                action_val = action[idx]
+                if action_name in [
+                    ActionVariable.TURN_LR_DELTA,
+                    ActionVariable.LOOK_UD_DELTA,
+                ]:
+                    action_val /= 5
+                setattr(agent_cmd, action_name, action_val)
 
         self.reply_queue.put(reply)
         self.latest_reply = reply
@@ -651,11 +649,9 @@ class Game:
         self.latest_request = self.request_queue.get()
         print("Started new episode ...")
 
-        if self.__use_depth_map:
-            mesh_name = f"{self.__GM.map_id:03d}.obj"
-            mesh_file_path = os.path.join(self.__map_dir, mesh_name)
-            self.__ray_tracer.update_mesh(mesh_file_path)
-
+        mesh_name = f"{self.__GM.map_id:03d}.obj"
+        mesh_file_path = os.path.join(self.__map_dir, mesh_name)
+        self.__ray_tracer.update_mesh(mesh_file_path)
         print(f"Map {self.__GM.map_id:03d} loaded ...")
 
     def close(self):
@@ -714,14 +710,16 @@ if __name__ == "__main__":
         agent_location = [state.position_x, state.position_y, state.position_z]
         direction = [v2 - v1 for v1, v2 in zip(agent_location, target_location)]
         yaw = get_picth_yaw(*direction)[1]
-        turn_lr_delta = random.choice([1, 0, -1])
-        action = [yaw, walk_speed, turn_lr_delta, True]
+        turn_lr_delta = random.choice([2, 0, -2])
+        look_ud_delta = random.choice([1, 0, -1])
+        action = [yaw, walk_speed, turn_lr_delta, look_ud_delta, True]
         return action
 
     used_actions = [
         ActionVariable.WALK_DIR,
         ActionVariable.WALK_SPEED,
         ActionVariable.TURN_LR_DELTA,
+        ActionVariable.LOOK_UD_DELTA,
         ActionVariable.PICKUP,
     ]
 
@@ -753,8 +751,9 @@ if __name__ == "__main__":
 
     for map_id in track(args.map_id_list, description="Running Maps ..."):
         game.set_map_id(map_id)
-        w, h, f = [random.randint(10, 50) for _ in range(3)]
-        game.set_depth_map_size(w, h, f)
+        if game.use_depth_map:
+            w, h, f = [random.randint(10, 50) for _ in range(3)]
+            game.set_depth_map_size(w, h, f)
         game.new_episode()
 
         console.print(game.get_game_config(), style="bold magenta")
