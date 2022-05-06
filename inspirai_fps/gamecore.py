@@ -220,7 +220,7 @@ class AgentState:
         x = self.position_x
         y = self.position_y
         z = self.position_z
-        return f"GameState[ts={self.time_step}][x={x:.2f},y={y:.2f},z={z:.2f}][supply={self.num_supply}][gun_ammo={self.weapon_ammo}][pack_ammo={self.spare_ammo}][hp={self.health}][pitch={self.pitch}][yaw={self.yaw}]"
+        return f"GameState[ts={self.time_step}][x={x:.2f},y={y:.2f},z={z:.2f}][supply={self.num_supply}][gun_ammo={self.weapon_ammo}][pack_ammo={self.spare_ammo}][hp={self.health}][pitch={self.pitch:.2f}][yaw={self.yaw:.2f}]"
 
     def is_enemy_visible(self, enemy_info: simple_command_pb2.EnemyInfo):
         view_angle = [90 + 20, (90 + 20) / 16 * 9]
@@ -278,13 +278,12 @@ class Game:
     MODE_SUP_BATTLE = simple_command_pb2.GameModeType.SUP_BATTLE_MODE
 
     # game config constants that are not changeable by the user
-    SPEED_UP_FACTOR = 10
-    TRIGGER_DISTANCE = 1
-    WATER_SPEED_DECAY = 0.5
-    INVINCIBLE_TIME = 10
-    RESPAWN_TIME = 10
-    SUPPLY_DROP_PERCENT = 50
-    MAX_VISION_DEPTH = 100
+    __SPEED_UP_FACTOR = 10
+    __TRIGGER_DISTANCE = 1
+    __WATER_SPEED_DECAY = 0.5
+    __INVINCIBLE_TIME = 10
+    __RESPAWN_TIME = 10
+    __SUPPLY_DROP_PERCENT = 50
 
     def __init__(
         self,
@@ -318,17 +317,17 @@ class Game:
         # Common settings
         gm_command.timeout = 60
         gm_command.game_mode = Game.MODE_NAVIGATION
-        gm_command.time_scale = Game.SPEED_UP_FACTOR
+        gm_command.time_scale = Game.__SPEED_UP_FACTOR
         gm_command.map_id = 1
         gm_command.random_seed = 0
         gm_command.num_agents = 0
         gm_command.is_record = False
         gm_command.replay_suffix = ""
-        gm_command.water_speed_decay = Game.WATER_SPEED_DECAY
+        gm_command.water_speed_decay = Game.__WATER_SPEED_DECAY
 
         # ModeNavigation settings
         set_vector3d(gm_command.target_location, [1, 0, 1])
-        gm_command.trigger_range = Game.TRIGGER_DISTANCE
+        gm_command.trigger_range = Game.__TRIGGER_DISTANCE
 
         # ModeSupplyGather settings
         set_vector3d(gm_command.supply_heatmap_center, [0, 0, 0])
@@ -342,9 +341,9 @@ class Game:
         gm_command.supply_house_random_max = 10
 
         # ModeSupplyBattle settings
-        gm_command.respawn_time = Game.RESPAWN_TIME
-        gm_command.invincible_time = Game.INVINCIBLE_TIME
-        gm_command.supply_loss_percent_when_dead = Game.SUPPLY_DROP_PERCENT
+        gm_command.respawn_time = Game.__RESPAWN_TIME
+        gm_command.invincible_time = Game.__INVINCIBLE_TIME
+        gm_command.supply_loss_percent_when_dead = Game.__SUPPLY_DROP_PERCENT
 
         return gm_command
 
@@ -625,13 +624,7 @@ class Game:
             agent_cmd = reply.agent_cmd_list.add()
             agent_cmd.id = agent_id
             for action_name, idx in self.__action_idx_map.items():
-                action_val = action[idx]
-                if action_name in [
-                    ActionVariable.TURN_LR_DELTA,
-                    ActionVariable.LOOK_UD_DELTA,
-                ]:
-                    action_val /= 5
-                setattr(agent_cmd, action_name, action_val)
+                setattr(agent_cmd, action_name, action[idx])
 
         self.reply_queue.put(reply)
         self.latest_reply = reply
@@ -749,7 +742,8 @@ if __name__ == "__main__":
 
     game.init()
 
-    for map_id in track(args.map_id_list, description="Running Maps ..."):
+    # for map_id in track(args.map_id_list, description="Running Maps ..."):
+    for map_id in args.map_id_list:
         game.set_map_id(map_id)
         if game.use_depth_map:
             w, h, f = [random.randint(10, 50) for _ in range(3)]
@@ -767,26 +761,11 @@ if __name__ == "__main__":
             game.make_action(action_all)
             dt = time.perf_counter() - t
 
-            # agent_id = 0
-            # state = state_all[agent_id]
-            # step_info = {
-            #     "Map ID": map_id,
-            #     "GameState": state.game_state,
-            #     "TimeStep": state.time_step,
-            #     "AgentID": agent_id,
-            #     "Location": get_position(state),
-            #     "Action": {
-            #         name: val for name, val in zip(used_actions, action_all[agent_id])
-            #     },
-            #     "#SupplyInfo": len(state.supply_states),
-            #     "#EnemyInfo": len(state.enemy_states),
-            #     "StepRate": round(1 / dt),
-            # }
-            # if state.depth_map is not None:
-            #     step_info["DepthMap"] = state.depth_map.shape
-            # console.print(step_info, style="bold magenta")
             console.print(state_all, style="bold magenta")
-            console.print(action_all, style="bold magenta")
+            actions = {
+                name: val for name, val in zip(used_actions, action_all[0])
+            }
+            console.print(actions, style="bold magenta")
 
         print("episode ended ...")
 
