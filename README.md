@@ -53,9 +53,11 @@ We developed this repository to provide a training and evaluation platform for t
 
 We support the multiple platforms with different engine backends, including:
 
+<!-- - Windows: download the engine [here](https://drive.google.com/file/d/1CEpiFPpx5NsWgqL8yzaZQX9fGuyPUKDy/view?usp=sharing)
+- MacOS: download the engine [here](https://drive.google.com/file/d/1hgQa5OPve4QCBczLEGeOis2HhHbxI68m/view?usp=sharing) -->
 - Linux: download the engine [here](https://drive.google.com/file/d/1HAZgr2jcVHq_-ThkVbg9jUbIVfMorudp/view?usp=sharing)
-- Windows: download the engine [here](https://drive.google.com/file/d/1CEpiFPpx5NsWgqL8yzaZQX9fGuyPUKDy/view?usp=sharing)
-- MacOS: download the engine [here](https://drive.google.com/file/d/1hgQa5OPve4QCBczLEGeOis2HhHbxI68m/view?usp=sharing)
+- Windows: will be updated soon
+- MacOS: will be updated soon
 
 ## Installation (from source)
 
