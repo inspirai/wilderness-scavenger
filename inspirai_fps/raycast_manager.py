@@ -3,6 +3,7 @@ from ctypes import cdll
 from sys import platform
 
 import os
+from typing import List
 import numpy as np
 import trimesh
 from numpy.ctypeslib import ndpointer
@@ -96,8 +97,8 @@ class RaycastManager(object):
 
     def get_depth(
         self,
-        position,
-        direction,
+        position: List[float],
+        direction: List[float],
     ):
         """
         multi agent support todo@wsp
@@ -110,11 +111,12 @@ class RaycastManager(object):
         far = self.FAR
 
         # position_in_mesh = np.array([position[0], -position[1], position[2]]) / 100.0
-        position_in_mesh = np.array([position[0], position[1], position[2]]) / 100.0
-        r = np.array(direction) * np.pi / 180
-        cam_lookat = position_in_mesh + np.array(
+        position_in_mesh = np.asarray(position)
+        r = np.asarray(direction) * np.pi / 180
+        cam_lookat = position_in_mesh + np.asarray(
             # [np.cos(r[2]) * np.cos(r[1]), -np.sin(r[2]) * np.cos(r[1]), np.sin(r[1])]
-            [-np.cos(r[2]) * np.cos(r[1]), np.sin(r[2]) * np.cos(r[1]), np.sin(r[1])]
+            # [-np.cos(r[2]) * np.cos(r[1]), np.sin(r[2]) * np.cos(r[1]), np.sin(r[1])]
+            [np.cos(r[2]) * np.cos(r[1]), np.sin(r[1]), -np.sin(r[2]) * np.cos(r[1])]
         )  # negative
 
         num_cameras = 1
