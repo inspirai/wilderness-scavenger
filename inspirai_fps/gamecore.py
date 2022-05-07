@@ -567,7 +567,7 @@ class Game:
             engine_path = self.__engine_dir
             assert engine_path.endswith(".app"), "engine_dir must be a .app on MacOS"
             cmd = (
-                f"open {engine_path} -IP:{self.__server_ip} -PORT:{self.__server_port}"
+                f"open {engine_path} --args -IP:{self.__server_ip} -PORT:{self.__server_port}"
             )
         else:
             raise NotImplementedError(f"Platform {sys.platform} is not supported")
