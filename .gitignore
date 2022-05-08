@@ -7,3 +7,4 @@ inspirai_fps.egg-info/*
 .vscode/*
 dist/*
 build/*
+*.png

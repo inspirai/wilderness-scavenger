@@ -7,18 +7,22 @@ import cv2
 import numpy as np
 
 SCALE = 1
-os.makedirs("dmp", exist_ok=True)
+WIDTH = 380
+HEIGHT = 220
+FAR = 100
+
+console = Console()
 
 
-def visualize(map_id, ts, depth_map, far):
-    img = (depth_map / far * 255).astype(np.uint8)
+def visualize(map_id, ts, depth_map):
+    img = (depth_map / FAR * 255).astype(np.uint8)
     h, w = img.shape
     img = cv2.resize(img, (w * SCALE, h * SCALE))
     img = cv2.applyColorMap(img, cv2.COLORMAP_JET)
     cv2.imwrite(f"dmp/depth_map={map_id}_ts={ts}.png", img)
 
 
-console = Console()
+os.makedirs("dmp", exist_ok=True)
 map_dir = os.path.expanduser("~/map_data")
 engine_dir = os.path.expanduser("~/newGame_linux")
 
@@ -31,9 +35,9 @@ game.set_available_actions(
 )
 game.set_episode_timeout(10)
 game.turn_on_depth_map()
-game.set_depth_map_size(38, 22, 300)
+game.set_depth_map_size(WIDTH, HEIGHT, FAR)
 game.set_game_mode(Game.MODE_NAVIGATION)
-game.add_agent(agent_name="agent_1")
+# game.add_agent(agent_name="agent_1")
 
 
 game.init()
@@ -61,9 +65,8 @@ for ep in range(5):
         console.print(action_all, style="bold magenta")
 
         depth_map = state_all[0].depth_map
-        far = game.get_depth_map_size()[2]
 
-        visualize(ep + 1, game.get_time_step(), depth_map, far)
+        visualize(ep + 1, game.get_time_step(), depth_map)
 
     console.print("Map {} finished".format(map_id), style="bold magenta")
 

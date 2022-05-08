@@ -352,9 +352,12 @@ class Game:
 
         return gm_command
 
-    # TODO: make this function available to the user
-    def __set_game_config(self, config_path: str):
-        """Experimental: Set game config from a yaml file"""
+    def set_game_config(self, config_path: str):
+        """
+        Experimental:  
+        ----------
+        Set game config from a json file. Be careful with the config file format!
+        """
         game_config = load_json(config_path)
         self.__GM.Clear()
         set_GM_command(self.__GM, game_config)
