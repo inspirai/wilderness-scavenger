@@ -29,15 +29,15 @@ args = parser.parse_args()
 
 
 # Define a random policy
-def my_policy(state):
+def my_policy(state, ts):
     jump = False
     attack = 0
     reload = False
     pickup = True
 
-    if state.time_step % 60 == 0:
+    if ts % 60 == 0:
         jump = True
-    if state.time_step % 30 == 0:
+    if ts % 30 == 0:
         attack = 1
     if (state.weapon_ammo == 0) and (state.spare_ammo > 0):
         reload = True
@@ -68,7 +68,7 @@ used_actions = [
 
 # instantiate Game
 game = Game(map_dir=args.map_dir, engine_dir=args.engine_dir)
-game.set_game_mode(args.game_mode)
+game.set_game_mode(Game.MODE_SUP_BATTLE)
 game.set_supply_heatmap_center([args.start_location[0], args.start_location[2]])
 game.set_supply_heatmap_radius(50)
 game.set_supply_indoor_richness(80)
@@ -103,7 +103,7 @@ for ep in track(range(args.num_episodes), description="Running Episodes ..."):
         t = time.perf_counter()
         state_all = game.get_state_all()
         action_all = {
-            agent_id: my_policy(state_all[agent_id]) for agent_id in state_all
+            agent_id: my_policy(state_all[agent_id], ts) for agent_id in state_all
         }
         game.make_action(action_all)
         dt = time.perf_counter() - t
