@@ -309,7 +309,10 @@ class Game:
         # initialize default game settings
         self.__GM = self.__get_default_GM()
         self.__use_depth_map = False
-        self.__ray_tracer = RaycastManager()
+        self.__ray_tracer = None
+        self.dmp_width = RaycastManager.DEFAULT_WIDTH
+        self.dmp_height = RaycastManager.DEFAULT_HEIGHT
+        self.dmp_far = RaycastManager.DEFAULT_FAR
 
         # initialize default agent
         self.add_agent(agent_name="agent_0")
@@ -391,13 +394,7 @@ class Game:
         self.__indoor_locations = locations["indoor"]
         self.__outdoor_locations = locations["outdoor"]
         self.__valid_locations = locations
-
-        # load mesh data
-        mesh_name = f"{self.__GM.map_id:03d}.obj"
-        mesh_file_path = os.path.join(self.__map_dir, mesh_name)
-        self.__ray_tracer.update_mesh(mesh_file_path)
-
-        print(f"Map {self.__GM.map_id:03d} loaded ...")
+        print(f"Loaded valid locations from {location_file_path}")
 
     def get_valid_locations(self):
         return self.__valid_locations.copy()
@@ -546,10 +543,14 @@ class Game:
         return self.__ray_tracer.WIDTH, self.__ray_tracer.HEIGHT, self.__ray_tracer.FAR
 
     def set_depth_map_size(self, width, height, far=None):
-        self.__ray_tracer.WIDTH = width
-        self.__ray_tracer.HEIGHT = height
+        assert isinstance(width, int) and width > 0
+        assert isinstance(height, int) and height > 0
+        assert isinstance(far, int) or far is None
+        self.dmp_width = width
+        self.dmp_height = height
         if far is not None:
-            self.__ray_tracer.FAR = far
+            assert far > 0
+            self.dmp_far = far
 
     def get_time_step(self):
         """ Returns the current time steps in game """
@@ -652,6 +653,18 @@ class Game:
         self.lastest_reply = reply
         self.latest_request = self.request_queue.get()
         print("Started new episode ...")
+
+        # release raytracer resources
+        del self.__ray_tracer
+
+        # load mesh data
+        mesh_name = f"{self.__GM.map_id:03d}.obj"
+        mesh_file_path = os.path.join(self.__map_dir, mesh_name)
+        self.__ray_tracer = RaycastManager(mesh_file_path)
+        self.__ray_tracer.WIDTH = self.dmp_width
+        self.__ray_tracer.HEIGHT = self.dmp_height
+        self.__ray_tracer.FAR = self.dmp_far
+        print("Loaded map mesh from {}".format(mesh_file_path))
 
     def close(self):
         reply = simple_command_pb2.A2S_Reply_Data()

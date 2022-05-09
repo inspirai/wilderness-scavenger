@@ -23,7 +23,7 @@ class RaycastManager(object):
     DEFAULT_WIDTH = 38
     DEFAULT_FAR = 100
 
-    def __init__(self):
+    def __init__(self, mesh_file_path):
         self.HEIGHT = self.DEFAULT_HEIGHT
         self.WIDTH = self.DEFAULT_WIDTH
         self.FAR = self.DEFAULT_FAR
@@ -85,7 +85,6 @@ class RaycastManager(object):
         except Exception:
             print("External library not loaded correctly: {}".format(lib_filename))
 
-    def update_mesh(self, mesh_file_path):
         self.depth_ptr = ctypes.POINTER(ctypes.c_void_p)()
 
         mesh_0 = trimesh.load(mesh_file_path, force="mesh")
@@ -94,7 +93,7 @@ class RaycastManager(object):
 
         c_func = self.ray_lib.init_mesh
         self.depth_ptr = c_func(self.depth_ptr, v, int(v.shape[0]), f, int(f.shape[0]))
-
+    
     def get_depth(
         self,
         position: List[float],
