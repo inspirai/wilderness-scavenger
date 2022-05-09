@@ -17,7 +17,7 @@ With a focus on learning intelligent agents in open-world games, this year we ar
 
 ## Basic Structures
 
-We developed this repository to provide a training and evaluation platform for the researchers interested in open-world FPS game AI. For getting started quickly, we summarize the basic structure of this repository as follows:
+We developed this repository to provide a training and evaluation platform for the researchers interested in open-world FPS game AI. For getting started quickly, a typical workspace structure when using this repository can be summarized as follows:
 
 ```bash
 .
@@ -38,14 +38,14 @@ We developed this repository to provide a training and evaluation platform for t
 │   ├── simple_command_pb2.py
 │   ├── simple_command_pb2_grpc.py
 │   └── utils.py
-└── unity3d  # the engine backend (default Linux)
+└── fps_linux  # the engine backend (Linux)
     ├── UnityPlayer.so
     ├── fps.x86_64
     ├── fps_Data/...
     └── logs/...
 ```
 
-- `unity3d`: the (default Linux) backend engine extracted from our game development project, containing all the game related assets, binaries and source codes.
+- `fps_linux` (**requires to be manually downloaded and unzipped to your working directory**):  the (Linux) engine backend extracted from our game development project, containing all the game related assets, binaries and source codes.
 - `inspirai_fps`: the python gameplay API for agent training and testing, providing the core [`Game`](inspirai_fps/gamecore.py) class and other useful tool classes and functions.
 - `examples`: we provide basic starter codes for each game mode targeting each track of the challenge, and we also give out our implementation of some baseline solutions based on [`ray.rllib`](https://docs.ray.io/en/master/rllib/index.html) reinforcement learning framework.
 
@@ -55,9 +55,9 @@ We support the multiple platforms with different engine backends, including:
 
 <!-- - Windows: download the engine [here](https://drive.google.com/file/d/1CEpiFPpx5NsWgqL8yzaZQX9fGuyPUKDy/view?usp=sharing)
 - MacOS: download the engine [here](https://drive.google.com/file/d/1hgQa5OPve4QCBczLEGeOis2HhHbxI68m/view?usp=sharing) -->
-- Linux: download the engine from [Google Drive]() or [Feishu]()
-- Windows: download the engine from [Google Drive]() or [Feishu]()
-- MacOS: download the engine from [Google Drive]() or [Feishu]()
+- Linux: download the engine from [Google Drive](https://drive.google.com/file/d/1V-Xm6h_kgBrXKOaZTkZSFMtl43YzI4FQ/view?usp=sharing) or [Feishu](https://scwc0a0eu7.feishu.cn/file/boxcnsFBB4VYG85caQE7odwezZb)
+- Windows: download the engine from [Google Drive](https://drive.google.com/file/d/1nUimRJVfn5ncskyoGziedqUZ1g8OtgJw/view?usp=sharing) or [Feishu](https://inspirai.feishu.cn/file/boxcn5onuZVrPg1r2kXtoehTEWe)
+- MacOS: download the engine from [Google Drive](https://drive.google.com/file/d/1PPRVGN50GsK9tpghScHAqAQ12Djr4Ff8/view?usp=sharing) or [Feishu](https://inspirai.feishu.cn/file/boxcnWQjQ5kGyhOn3r49NEU7U0f)
 
 ## Installation (from source)
 
@@ -79,9 +79,9 @@ $ conda activate WildScav
 
 ## Installation (from PyPI)
 
-**Note: this may not be maintained in time.**
+**Note: this may not be maintained in time. We strongly recommend using the installation method above**
 
-Alternatively, you can install the package from PyPI directly. But note that this will only install the gameplay API `inspirai_fps`, not the backend engine. So you still need to manually download the engine binaries and assets (`unity3d`) from our repository.
+Alternatively, you can install the package from PyPI directly. But note that this will only install the gameplay API `inspirai_fps`, not the backend engine. So you still need to manually download the correct engine backend from the [Supported Platfroms](#supported-platforms) section.
 
 ```bash
 pip install inspirai-fps
@@ -94,7 +94,7 @@ To successfully run the game, you need to make sure the game engine backend for 
 ```python
 from inspirai_fps import Game, ActionVariable
 ...
-parser.add_argument("--engine-dir", type=str, default="../unity3d")
+parser.add_argument("--engine-dir", type=str, default="../fps_linux")
 ...
 game = Game(..., engine_dir=args.engine_dir, ...)
 ```
@@ -103,7 +103,7 @@ game = Game(..., engine_dir=args.engine_dir, ...)
 
 To get access to some features like realtime depth map computation or randomized player spawning, you need to load the map data and load them into the `Game`. After this, once you turn on the depth map rendering, the game server will automatically compute a depth map viewing from the player's first person perspective at each time step.
 
-1. Download map data from [Google Drive](https://drive.google.com/file/d/1QGrKfnVZ2Z7f2JPjLbYAQy5Pv6y8vz3p/view?usp=sharing) or [Feishu](https://inspirai.feishu.cn/file/boxcnjVwcVTSZPnwB1whheQsGKf) and decompress the downloaded file to your preferred directory (e.g., `<WORKDIR>/map_data`).
+1. Download map data from [Google Drive](https://drive.google.com/file/d/1n1199S3DF9ScvVZHlHLrtZ8WUBvIlKgR/view?usp=sharing) or [Feishu](https://inspirai.feishu.cn/file/boxcnjVwcVTSZPnwB1whheQsGKf) and decompress the downloaded file to your preferred directory (e.g., `<WORKDIR>/map_data`).
 2. Set `map_dir` parameter of the `Game` initializer accordingly
 3. Set the `map_id` as you like
 4. Turn on the function of depth map computation
@@ -124,10 +124,11 @@ game.set_map_id(args.map_id)  # this will load the valid locations of the specif
 ...
 if args.use_depth_map:
     game.turn_on_depth_map()
+    game.set_depth_map_size(380, 220, 200)  # width (pixels), height (pixels), depth_limit (meters)
 ...
 if args.random_start_location:
     for agent_id in range(args.num_agents):
-        game.random_start_location(agent_id)  # this will randomly spawn the player at a valid location
+        game.random_start_location(agent_id, indoor=False)  # this will randomly spawn the player at a valid outdoor location, or indoor location if indoor is True
 ...
 game.new_episode()  # start a new episode, this will load the mesh of the specified map
 ```
@@ -136,8 +137,8 @@ game.new_episode()  # start a new episode, this will load the mesh of the specif
 
 We have also developed a replay visualization tool based on the Unity3D game engine. It is similar to the spectator mode common in multiplayer FPS games, which allows users to interactively follow the gameplay. Users can view an agent's action from different perspectives and also switch between multiple agents or different viewing modes (e.g., first person, third person, free) to see the entire game in a more immersive way. Participants can download the tool for their specific platforms here:
 
-- Windows: download the replay tool from [Google Drive](https://drive.google.com/file/d/1YIEGnjKaH_KzycwJK5WKEGMVn8dls7dR/view?usp=sharing) or [Feishu](https://inspirai.feishu.cn/file/boxcni1jx6ve3owGTX8cGuciwfh)
-- MacOS: download the replay tool from [Google Drive](https://drive.google.com/file/d/1QKfMmF_4FZc2hJ2cEzD6psv6jr21rC_L/view?usp=sharing) or [Feishu](https://inspirai.feishu.cn/file/boxcnBauh8ZpPtyl8NhPUTynYFd)
+- Windows: download the replay tool from [Google Drive](https://drive.google.com/file/d/1RgVjCuRw9b_oi4DUe0AuLAHNQzDIaJdS/view?usp=sharing) or [Feishu](https://scwc0a0eu7.feishu.cn/file/boxcnX7UJ94zBv2AaPElGujyKWb)
+- MacOS: download the replay tool from [Google Drive](https://drive.google.com/file/d/1N5jMLkIzGdN2ynw_QWBUaRAiGa05QScq/view?usp=sharing) or [Feishu](https://scwc0a0eu7.feishu.cn/file/boxcneEFmflI0ZW8hPrQ7Ad6Iyc)
 
 To use this tool, follow the instruction below:
 
