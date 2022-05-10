@@ -24,6 +24,7 @@ class RaycastManager(object):
     DEFAULT_FAR = 100
 
     def __init__(self, mesh_file_path):
+        self.mesh_file_path = mesh_file_path
         self.HEIGHT = self.DEFAULT_HEIGHT
         self.WIDTH = self.DEFAULT_WIDTH
         self.FAR = self.DEFAULT_FAR
@@ -195,4 +196,4 @@ class RaycastManager(object):
 
     def __del__(self):
         self._free_mesh()
-        print(">>>>>>>>>>>>>>>>> RayTracer destroyed <<<<<<<<<<<<<<<<<<<<")
+        print(f"[free] memory used by {self.mesh_file_path} is freed")
