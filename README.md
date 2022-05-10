@@ -117,7 +117,7 @@ from inspirai_fps import Game, ActionVariable
 parser.add_argument("--map-id", type=int, default=1)
 parser.add_argument("--use-depth-map", action="store_true")
 parser.add_argument("--random-start-location", action="store_true")
-parser.add_argument("--map-dir", type=str, default="../data")
+parser.add_argument("--map-dir", type=str, default="../map_data")
 ...
 game = Game(map_dir=args.map_dir, ...)
 game.set_map_id(args.map_id)  # this will load the valid locations of the specified map
