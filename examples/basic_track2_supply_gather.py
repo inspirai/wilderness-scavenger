@@ -28,11 +28,11 @@ args = parser.parse_args()
 
 
 # Define a random policy
-def my_policy(state):
+def my_policy(state, ts):
     jump = False
     pickup = True
 
-    if state.time_step % 60 == 0:
+    if ts % 60 == 0:
         jump = True
 
     return [
@@ -88,7 +88,7 @@ for ep in track(range(args.num_episodes), description="Running Episodes ..."):
         t = time.perf_counter()
         state_all = game.get_state_all()
         action_all = {
-            agent_id: my_policy(state_all[agent_id]) for agent_id in state_all
+            agent_id: my_policy(state_all[agent_id], ts) for agent_id in state_all
         }
         game.make_action(action_all)
         dt = time.perf_counter() - t
