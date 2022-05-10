@@ -82,14 +82,17 @@ class RaycastManager(object):
             ]
             c_func.restype = ctypes.c_void_p
 
+            c_func = self.ray_lib.free_mesh
+            c_func.argtypes = [ctypes.c_void_p]
+
         except Exception:
             print("External library not loaded correctly: {}".format(lib_filename))
 
         self.depth_ptr = ctypes.POINTER(ctypes.c_void_p)()
 
-        mesh_0 = trimesh.load(mesh_file_path, force="mesh")
-        v = np.array(mesh_0.vertices).astype(np.float32)
-        f = np.array(mesh_0.faces).astype(np.uint32)
+        mesh = trimesh.load(mesh_file_path, force="mesh")
+        v = np.array(mesh.vertices).astype(np.float32)
+        f = np.array(mesh.faces).astype(np.uint32)
 
         c_func = self.ray_lib.init_mesh
         self.depth_ptr = c_func(self.depth_ptr, v, int(v.shape[0]), f, int(f.shape[0]))
@@ -183,5 +186,13 @@ class RaycastManager(object):
         c_func = self.ray_lib.free_arrays
         c_func(arr_ptr_void, num_arrays)
 
+    def _free_mesh(self):
+        c_func = self.ray_lib.free_mesh
+        c_func(self.depth_ptr)
+
     def __repr__(self) -> str:
         return "RayTracer(HEIGHT={}, WIDTH={}, FAR={})".format(self.HEIGHT, self.WIDTH, self.FAR)
+
+    def __del__(self):
+        self._free_mesh()
+        print(">>>>>>>>>>>>>>>>> RayTracer destroyed <<<<<<<<<<<<<<<<<<<<")
