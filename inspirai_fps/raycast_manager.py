@@ -33,8 +33,10 @@ class RaycastManager(object):
             lib_filename = "libraycaster.so"
         elif platform.startswith("darwin"):
             lib_filename = "libraycaster.dylib"
+        elif platform.startswith("win"):
+            lib_filename = "raycaster.dll"
         else:
-            raise NotImplementedError(platform)
+            raise NotImplementedError(f"{platform} is not supported")
 
         work_dir = os.path.dirname(__file__)
         lib_path = os.path.join(work_dir, "lib", lib_filename)
@@ -97,7 +99,7 @@ class RaycastManager(object):
 
         c_func = self.ray_lib.init_mesh
         self.depth_ptr = c_func(self.depth_ptr, v, int(v.shape[0]), f, int(f.shape[0]))
-    
+
     def get_depth(
         self,
         position: List[float],
@@ -192,7 +194,7 @@ class RaycastManager(object):
         c_func(self.depth_ptr)
 
     def __repr__(self) -> str:
-        return "RayTracer(HEIGHT={}, WIDTH={}, FAR={})".format(self.HEIGHT, self.WIDTH, self.FAR)
+        return f"RayTracer(HEIGHT={self.HEIGHT}, WIDTH={self.WIDTH}, DEPTH={self.FAR}, mesh={self.mesh_file_path})"
 
     def __del__(self):
         self._free_mesh()
