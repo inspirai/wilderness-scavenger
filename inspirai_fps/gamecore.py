@@ -86,12 +86,15 @@ class SupplyState:
         self.position_y = supply_info.supply_location.y
         self.position_z = supply_info.supply_location.z
         self.quantity = supply_info.supply_quantity
+        self.id = supply_info.supply_id
 
     def __repr__(self) -> str:
         x = self.position_x
         y = self.position_y
         z = self.position_z
-        return f"Supply_Pos(x={x:.2f},y={y:.2f},z={z:.2f})_Num({self.quantity})"
+        id = self.id
+        q = self.quantity
+        return f"Supply({id=})_Pos(x={x:.2f},y={y:.2f},z={z:.2f})_Num({q})"
 
 
 class EnemyStateDetailed:
@@ -109,12 +112,23 @@ class EnemyStateDetailed:
         self.move_dir_y = enemy_info.move_dir.y
         self.move_dir_z = enemy_info.move_dir.z
         self.move_speed = enemy_info.move_speed
+        self.health = enemy_info.hp
+        self.id = enemy_info.enemy_id
+        self.waiting_respawn = enemy_info.is_respawn
+        self.is_invincible = enemy_info.is_invincible
 
     def __repr__(self) -> str:
         x = self.position_x
         y = self.position_y
         z = self.position_z
-        return f"Enemy_Pos(x={x:.2f},y={y:.2f},z={z:.2f})_Speed({self.move_speed})"
+        mx = self.move_dir_x
+        my = self.move_dir_y
+        mz = self.move_dir_z
+        ms = self.move_speed
+        h = self.health
+        id = self.id
+        w = self.waiting_respawn
+        return f"Enemy({id=})_Pos({x=:.2f},{y=:.2f},{z=:.2f})_MoveDir(x={mx:.2f},y={my:.2f},z={mz:.2f})_MoveSpeed({ms:.2f})_Health({h:.2f})_WaitingRespawn({w})"
 
 
 class EnemyStateRough:
@@ -165,8 +179,8 @@ class AgentState:
     """
 
     __SUPPLY_VIS_DISTANCE = 20
+    __ENEMY_VISIBLE_ANGLE = 110
     __CAMERA_HEIGHT = 1.5
-    __VISION_ANGLE = 60
     __BODY_RADIUS = 0.45
     __BODY_HEIGHT = 1.78
 
@@ -215,15 +229,15 @@ class AgentState:
             ]
             self.depth_map = self.ray_tracer.get_depth(pos, dir)[0]
 
-        self.supply_states = [
-            SupplyState(s)
+        self.supply_states = {
+            s.supply_id: SupplyState(s)
             for s in filter(self.is_supply_visible, obs_data.supply_info_list)
-        ]
+        }
 
-        self.enemy_states = [
-            EnemyStateDetailed(e)
+        self.enemy_states = {
+            e.enemy_id: EnemyStateDetailed(e)
             for e in filter(self.is_enemy_visible, obs_data.enemy_info_list)
-        ]
+        }
 
     def __repr__(self) -> str:
         x = self.position_x
@@ -239,7 +253,7 @@ class AgentState:
         return f"AgentState(pos={pos},dir={dir},speed={self.move_speed},pitch={self.pitch},yaw={self.yaw},health={self.health},weapon_ammo={self.weapon_ammo},spare_ammo={self.spare_ammo},on_ground={self.on_ground},is_attack={self.is_attack},is_reload={self.is_reload},hit_enemy={self.hit_enemy},hit_by_enemy={self.hit_by_enemy},num_supply={self.num_supply},is_waiting_respawn={self.is_waiting_respawn},is_invincible={self.is_invincible},use_depth_map={self.depth_map is not None})"
 
     def is_enemy_visible(self, enemy_info: simple_command_pb2.EnemyInfo):
-        view_angle = [self.__VISION_ANGLE / 16 * 9, self.__VISION_ANGLE]
+        view_angle = [self.__ENEMY_VISIBLE_ANGLE / 16 * 9, self.__ENEMY_VISIBLE_ANGLE]
         body_param = [
             self.__BODY_RADIUS * 2,
             self.__BODY_HEIGHT,
@@ -247,17 +261,17 @@ class AgentState:
 
         agent_team_id = [0, 1]
         agent_position = [
-            self.position_z,
-            self.position_y,
             self.position_x,
-            enemy_info.location.z,
-            enemy_info.location.y,
+            self.position_y,
+            self.position_z,
             enemy_info.location.x,
+            enemy_info.location.y,
+            enemy_info.location.z,
         ]
         camera_location = [
-            self.position_z,
-            self.position_y + self.__CAMERA_HEIGHT,
             self.position_x,
+            self.position_y + self.__CAMERA_HEIGHT,
+            self.position_z,
             0,  # default 0 -> of no use
             0,  # default 0 -> of no use
             0,  # default 0 -> of no use
@@ -265,7 +279,7 @@ class AgentState:
         camerarotation = [
             0,
             self.pitch,
-            self.yaw,
+            self.yaw + 90,
             0,  # default 0 -> of no use
             0,  # default 0 -> of no use
             0,  # default 0 -> of no use
@@ -287,6 +301,14 @@ class AgentState:
         self_pos = get_position(self)
         distance = get_distance(self_pos, supply_pos)
         return distance <= self.__SUPPLY_VIS_DISTANCE
+
+    @property
+    def supply_visible_distance(self):
+        return self.__SUPPLY_VIS_DISTANCE
+
+    @property
+    def enemy_visible_angle(self):
+        return self.__ENEMY_VISIBLE_ANGLE
 
 
 class Game:

@@ -12,4 +12,4 @@ docker_example
 examples/test*
 inspirai_fps/*.proto
 *.gif
-
+examples/save_replay.py
