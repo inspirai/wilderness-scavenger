@@ -40,7 +40,7 @@ python basic_track1_navigation.py \
 # run the game in Supply_gather mode for one episode with 1 player and turn on depth map rendering
 python basic_track2_supply_gather.py \
 --num-episodes 1 \
---record --replay-suffix simple_navigation \
+--record --replay-suffix simple_supply_gather \
 --use-depth-map
 ```
 
@@ -54,7 +54,7 @@ python basic_track2_supply_gather.py \
 # run the game in Supply_battle mode for one episode with 1 player and turn on depth map rendering
 python basic_track3_supply_battle.py \
 --num-episodes 1 --num-agents 2 \
---record --replay-suffix simple_navigation \
+--record --replay-suffix simple_supply_battle \
 --use-depth-map
 ```
 
@@ -81,7 +81,7 @@ python baseline_track1_normal.py \
 --use-depth-map \
 --detailed-log \
 --record --replay-suffix baseline_navigation \
---num-workers 1 --stop-iters 20 --stop-reward 80
+--num-workers 1 --stop-iters 20 --stop-reward 99
 ```
 
 ## [baseline_track2_normal.py](baseline_track2_normal.py)

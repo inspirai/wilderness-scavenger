@@ -1,0 +1,102 @@
+{
+    "timeout": 120,
+    "time_scale": 5,
+    "random_seed": 0,
+    "game_mode": 2,
+    "map_id": 1,
+    "num_agents": 10,
+    "supply_heatmap_center": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+    },
+    "supply_heatmap_radius": 60,
+    "supply_create_percent": 20,
+    "supply_house_create_percent": 10,
+    "supply_grid_length": 1,
+    "supply_random_min": 1,
+    "supply_random_max": 5,
+    "supply_house_random_min": 10,
+    "supply_house_random_max": 10,
+    "supply_refresh_datas": [
+        {
+            "supply_refresh_time": 40,
+            "supply_heatmap_center": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            },
+            "supply_heatmap_radius": 100,
+            "supply_create_percent": 5,
+            "supply_house_create_percent": 5
+        }
+
+    ],
+    "agent_setups": [
+        {
+            "id": 0,
+            "hp": 90,
+            "num_pack_ammo": 60,
+            "gun_capacity": 15,
+            "attack_power": 10,
+            "start_location": {
+                "x": 0,
+                "y": 3,
+                "z": 0
+            },
+            "agent_name": "Alice"
+        },
+        {
+            "id": 1,
+            "hp": 100,
+            "num_pack_ammo": 70,
+            "gun_capacity": 20,
+            "attack_power": 25,
+            "start_location": {
+                "x": 10,
+                "y": 3,
+                "z": 10
+            },
+            "agent_name": "Bob"
+        },
+        {
+            "id": 2,
+            "hp": 100,
+            "num_pack_ammo": 70,
+            "gun_capacity": 20,
+            "attack_power": 25,
+            "start_location": {
+                "x": -10,
+                "y": 3,
+                "z": 10
+            },
+            "agent_name": "Bob"
+        },
+        {
+            "id": 3,
+            "hp": 100,
+            "num_pack_ammo": 70,
+            "gun_capacity": 20,
+            "attack_power": 25,
+            "start_location": {
+                "x": 10,
+                "y": 3,
+                "z": -10
+            },
+            "agent_name": "Bob"
+        },
+        {
+            "id": 4,
+            "hp": 100,
+            "num_pack_ammo": 70,
+            "gun_capacity": 20,
+            "attack_power": 25,
+            "start_location": {
+                "x": 20,
+                "y": 3,
+                "z": 20
+            },
+            "agent_name": "Bob"
+        }
+    ]
+}
