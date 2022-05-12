@@ -357,7 +357,7 @@ class Game:
 
     def set_game_config(self, config_path: str):
         """
-        Experimental:  
+        Experimental:
         ----------
         Set game config from a json file. Be careful with the config file format!
         """
@@ -553,7 +553,7 @@ class Game:
             self.dmp_far = far
 
     def get_time_step(self):
-        """ Returns the current time steps in game """
+        """Returns the current time steps in game"""
         return self.latest_request.time_step
 
     def get_target_reach_distance(self):
@@ -596,7 +596,10 @@ class Game:
 
         # start unity3d game engine
         with open(engine_log_path, "w") as f:
-            self.engine_process = subprocess.Popen(cmd.split(), stdout=f, stderr=f)
+            shell = sys.platform.startswith("win32")
+            self.engine_process = subprocess.Popen(
+                cmd.split(), stdout=f, stderr=f, shell=shell
+            )
         print("Unity3D started ...")
 
         # waiting for unity3d to send the first request
@@ -658,7 +661,10 @@ class Game:
         mesh_name = f"{self.__GM.map_id:03d}.obj"
         mesh_file_path = os.path.join(self.__map_dir, mesh_name)
 
-        if self.__ray_tracer is None or self.__ray_tracer.mesh_file_path != mesh_file_path:
+        if (
+            self.__ray_tracer is None
+            or self.__ray_tracer.mesh_file_path != mesh_file_path
+        ):
             # release raytracer resources
             del self.__ray_tracer
             self.__ray_tracer = RaycastManager(mesh_file_path)
@@ -776,8 +782,10 @@ if __name__ == "__main__":
         console.print(game.get_game_config(), style="bold magenta")
 
         while not game.is_episode_finished():
-            console.print(">>>>>>>> TimeStep:", game.get_time_step(), style="bold magenta")
-            
+            console.print(
+                ">>>>>>>> TimeStep:", game.get_time_step(), style="bold magenta"
+            )
+
             t = time.perf_counter()
             state_all = game.get_state_all()
             action_all = {
@@ -789,7 +797,7 @@ if __name__ == "__main__":
             console.print(state_all, style="bold magenta")
             actions = {name: val for name, val in zip(used_actions, action_all[0])}
             console.print(actions, style="bold magenta")
-            console.print("<<<<<<<<< StepRate:", round(1/dt), style="bold magenta")
+            console.print("<<<<<<<<< StepRate:", round(1 / dt), style="bold magenta")
 
         print("episode ended ...")
 
