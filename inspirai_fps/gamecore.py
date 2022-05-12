@@ -165,6 +165,10 @@ class AgentState:
     """
 
     __SUPPLY_VIS_DISTANCE = 20
+    __CAMERA_HEIGHT = 1.5
+    __VISION_ANGLE = 60
+    __BODY_RADIUS = 0.45
+    __BODY_HEIGHT = 1.78
 
     def __init__(
         self,
@@ -199,8 +203,16 @@ class AgentState:
 
         self.depth_map = None
         if use_depth_map:
-            pos = get_position(self)
-            dir = get_orientation(self)
+            pos = [
+                self.position_x,
+                self.position_y + self.__CAMERA_HEIGHT,
+                self.position_z,
+            ]
+            dir = [
+                0,
+                self.pitch,
+                -self.yaw,
+            ]
             self.depth_map = self.ray_tracer.get_depth(pos, dir)[0]
 
         self.supply_states = [
@@ -227,32 +239,34 @@ class AgentState:
         return f"AgentState(pos={pos},dir={dir},speed={self.move_speed},pitch={self.pitch},yaw={self.yaw},health={self.health},weapon_ammo={self.weapon_ammo},spare_ammo={self.spare_ammo},on_ground={self.on_ground},is_attack={self.is_attack},is_reload={self.is_reload},hit_enemy={self.hit_enemy},hit_by_enemy={self.hit_by_enemy},num_supply={self.num_supply},is_waiting_respawn={self.is_waiting_respawn},is_invincible={self.is_invincible},use_depth_map={self.depth_map is not None})"
 
     def is_enemy_visible(self, enemy_info: simple_command_pb2.EnemyInfo):
-        view_angle = [90 + 20, (90 + 20) / 16 * 9]
-        body_param = [0.45 * 2, 1.78]  # body size (width, height)
-        camera_height = 1.5
+        view_angle = [self.__VISION_ANGLE / 16 * 9, self.__VISION_ANGLE]
+        body_param = [
+            self.__BODY_RADIUS * 2,
+            self.__BODY_HEIGHT,
+        ]  # body size (width, height)
 
         agent_team_id = [0, 1]
         agent_position = [
-            self.position_x,
             self.position_z,
             self.position_y,
-            enemy_info.location.x,
+            self.position_x,
             enemy_info.location.z,
             enemy_info.location.y,
+            enemy_info.location.x,
         ]
         camera_location = [
+            self.position_z,
+            self.position_y + self.__CAMERA_HEIGHT,
             self.position_x,
-            self.position_z + camera_height,
-            self.position_y,
-            enemy_info.location.x,
-            enemy_info.location.z + camera_height,
-            enemy_info.location.y,
+            0,  # default 0 -> of no use
+            0,  # default 0 -> of no use
+            0,  # default 0 -> of no use
         ]
         camerarotation = [
             0,
             self.pitch,
             self.yaw,
-            0,
+            0,  # default 0 -> of no use
             0,  # default 0 -> of no use
             0,  # default 0 -> of no use
         ]
@@ -427,6 +441,11 @@ class Game:
 
     def get_target_location(self):
         return vector3d_to_list(self.__GM.target_location)
+
+    def random_target_location(self, indoor: bool = False):
+        locations = self.__indoor_locations if indoor else self.__outdoor_locations
+        loc = random.choice(locations)
+        set_vector3d(self.__GM.target_location, loc)
 
     def set_available_actions(self, actions: List[str]):
         assert isinstance(actions, list) and len(actions) >= 1

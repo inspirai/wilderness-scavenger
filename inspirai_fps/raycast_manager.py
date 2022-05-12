@@ -1,12 +1,13 @@
+import os
 import ctypes
 from ctypes import cdll
 from sys import platform
 
-import os
-from typing import List
-import numpy as np
 import trimesh
+import numpy as np
+from math import radians
 from numpy.ctypeslib import ndpointer
+from typing import List
 
 
 def perspective_frustum(hw_ratio, x_fov, znear, zfar):
@@ -22,6 +23,7 @@ class RaycastManager(object):
     DEFAULT_HEIGHT = 22
     DEFAULT_WIDTH = 38
     DEFAULT_FAR = 100
+    __VISION_ANGLE = 60
 
     def __init__(self, mesh_file_path):
         self.mesh_file_path = mesh_file_path
@@ -118,7 +120,7 @@ class RaycastManager(object):
         position_in_mesh = np.asarray(position)
         r = np.asarray(direction) * np.pi / 180
         cam_lookat = position_in_mesh + np.asarray(
-            [np.cos(r[2]) * np.cos(r[1]), -np.sin(r[1]), -np.sin(r[2]) * np.cos(r[1])]
+            [np.sin(r[2]) * np.cos(r[1]), -np.sin(r[1]), np.cos(r[2]) * np.cos(r[1])]
         )  # negative
 
         num_cameras = 1
@@ -133,7 +135,10 @@ class RaycastManager(object):
             cam_param_array_double[i, 6:9] = [0, 1, 0]
             cam_param_array_double[i, 9:10] = 1.0
             cam_param_array_double[i, 10:16] = perspective_frustum(
-                hw_ratio=float(height) / width, x_fov=0.85, znear=0.01, zfar=far
+                hw_ratio=float(height) / width,
+                x_fov=radians(self.__VISION_ANGLE // 2),
+                znear=0.01,
+                zfar=far,
             )
             cam_param_array_double[i, 16:18] = [height, width]
 

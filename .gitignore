@@ -8,3 +8,8 @@ inspirai_fps.egg-info/*
 dist/*
 build/*
 *.png
+docker_example
+examples/test*
+inspirai_fps/*.proto
+*.gif
+
