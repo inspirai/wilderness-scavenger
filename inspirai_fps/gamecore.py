@@ -179,7 +179,7 @@ class AgentState:
     """
 
     __SUPPLY_VIS_DISTANCE = 20
-    __ENEMY_VISIBLE_ANGLE = 110
+    __ENEMY_VISIBLE_ANGLE = 90
     __CAMERA_HEIGHT = 1.5
     __BODY_RADIUS = 0.45
     __BODY_HEIGHT = 1.78
@@ -225,7 +225,7 @@ class AgentState:
             dir = [
                 0,
                 self.pitch,
-                -self.yaw,
+                self.yaw,
             ]
             self.depth_map = self.ray_tracer.get_depth(pos, dir)[0]
 
@@ -279,7 +279,7 @@ class AgentState:
         camerarotation = [
             0,
             self.pitch,
-            self.yaw + 90,
+            self.yaw,
             0,  # default 0 -> of no use
             0,  # default 0 -> of no use
             0,  # default 0 -> of no use
@@ -324,6 +324,7 @@ class Game:
     __INVINCIBLE_TIME = 10
     __RESPAWN_TIME = 10
     __SUPPLY_DROP_PERCENT = 50
+    __TIMESTEP_PER_ACTION = 5
 
     def __init__(
         self,
@@ -390,6 +391,10 @@ class Game:
         gm_command.supply_loss_percent_when_dead = Game.__SUPPLY_DROP_PERCENT
 
         return gm_command
+
+    @property
+    def time_step_per_action(self):
+        return self.__TIMESTEP_PER_ACTION
 
     def set_game_config(self, config_path: str):
         """
