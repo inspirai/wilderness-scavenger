@@ -34,8 +34,7 @@ class BaseEnv(gym.Env):
         else:
             self.game.turn_off_record()
         self.game.set_game_replay_suffix(self.replay_suffix)
-        if self.config["use_depth"]:
-            self.game.turn_on_depth_map()
+
 
     def reset(self):
         print("Reset for a new game ...")
@@ -51,7 +50,7 @@ class BaseEnv(gym.Env):
         return super().close()
 
     def render(self, mode="replay"):
-        if not self.config["use_depth"]:
+        if not self.config.get("use_depth",None):
             raise Exception("You do not turn on the use-depth-map parameter,"
                             "so there is no chance of visualizing depth-map for you")
         
@@ -110,10 +109,11 @@ class NavigationBaseEnv(BaseEnv):
         self.game.make_action({0: action_cmd})
         self.state = self.game.get_state()
         done = self.game.is_episode_finished()
-        reward = 0
+        
         self.running_steps += 1
         cur_pos = get_position(self.state)
         tar_pos = self.target_location
+        reward = -get_distance(cur_pos, tar_pos)
 
         if get_distance(cur_pos, tar_pos) <= self.trigger_range:
             reward += 100
@@ -146,8 +146,8 @@ class NavigationBaseEnv(BaseEnv):
         vec_len = self.trigger_range + distance_to_trigger
         dx = np.sin(angle) * vec_len
         dz = np.cos(angle) * vec_len
-        x = self.target_location[0] + dx
-        z = self.target_location[2] + dz
+        x = self.target_location[0] + np.random.randint(-30,30)
+        z = self.target_location[2] + np.random.randint(-30,30)
         return [x, self.start_hight, z]
 
 
