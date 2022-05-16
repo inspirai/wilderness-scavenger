@@ -32,7 +32,7 @@ parser.add_argument("--detailed-log", action="store_true", help="whether to prin
 parser.add_argument("--heatmap-center", type=float, nargs=3, default=[0, 0, 0])  # the center of the supply heatmap (x, z are the 2D location and y is the height)
 parser.add_argument("--start-range", type=float, default=1)  # the range of the start location
 parser.add_argument("--start_height", type=float, default=2)  # the height of the start location
-parser.add_argument("--engine-dir", type=str, default="../unity3d")  # path to unity executable
+parser.add_argument("--engine-dir", type=str, default="../wildscav-linux-backend")  # path to unity executable
 parser.add_argument("--map-dir", type=str, default="../map_data")  # path to map files
 parser.add_argument("--map-id", type=int, default=1)  # id of the map
 parser.add_argument("--use-depth", action="store_true")  # whether to use depth map
@@ -51,13 +51,14 @@ parser.add_argument("--run", type=str, default="PPO", help="The RLlib-registered
 parser.add_argument("--stop_episodes", type=int, default=100000000)
 parser.add_argument("--stop-timesteps", type=int, default=100000000)
 parser.add_argument("--stop-reward", type=float, default=999999)
-parser.add_argument("--train-batch-size", type=int, default=400)
+parser.add_argument("--train-batch-size", type=int, default=800)
 
 
 
 class SupplyBattleMultiAgentEnv(MultiAgentEnv):
     def __init__(self, config: EnvContext):
         super().__init__()
+
 
         self.seed(config["random_seed"])
         self.server_port = BASE_WORKER_PORT + config.worker_index
@@ -82,16 +83,11 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
         self.game.set_map_id(env_config["map_id"])
         self.game.set_episode_timeout(env_config["timeout"])
         self.game.set_random_seed(env_config["random_seed"])
-        self.game.set_supply_heatmap_radius(60)
-        self.game.set_supply_indoor_richness(10)  # 10
-        self.game.set_supply_outdoor_richness(10)  # 10
-        self.game.set_supply_indoor_quantity_range(10, 20)
-        self.game.set_supply_outdoor_quantity_range(1, 5)
         self.game.set_supply_spacing(4)
         game_config = self.game.get_game_config()
         self.supply_heatmap_center = config['heatmap_center']
         self.args = config
-        print(game_config)
+
         self.agent_ids = [agent["id"] for agent in game_config["agentSetups"]]
         for agent in game_config["agentSetups"]:
             self._agent_ids.add(agent["id"])
@@ -116,7 +112,7 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
                 spaces.Box(-np.Inf, np.Inf, (7,), dtype=np.float32),
                 spaces.Box(-np.Inf, np.Inf, (4,), dtype=np.float32),
                 spaces.Box(-np.Inf, np.Inf, (3,), dtype=np.float32),
-                spaces.Box(-np.Inf, np.Inf, (3,7), dtype=np.float32),
+                spaces.Box(-np.Inf, np.Inf, (3,9), dtype=np.float32),
             ]
         if env_config["use_depth"]:
             self.game.turn_on_depth_map()
@@ -143,14 +139,27 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
             self.state_dict[agent_id] = self.game.get_state(agent_id)
             obs_dict[agent_id] = self._get_obs(self.state_dict[agent_id],agent_id)
         self.episode_num+=1
-        self.hurt_num = 0
-        self.dead_num = 0
+
+        
+        self.agent_dead = 0
+        
+        self.hit_num = 0
+        self.reload = 0
+        self.hitted_num = 0
+        # hp
+        # dead
+        # ammo
+        # hit
+        # reload
+        # hitted
         return obs_dict
 
 
 
 
     def step(self, action_dict):
+        self.agent_hp = 0
+        self.weapon_ammo = 0
 
         action_cmd_dict = {agent_id: self._action_process(action_dict[agent_id]) for agent_id in action_dict}
         self.game.make_action(action_cmd_dict)
@@ -167,10 +176,21 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
         for agent_id in action_dict:
 
             state = self.game.get_state(agent_id)
+            
+            self.agent_hp+=state.health/100.
+            if state.health<=0 and self.state_dict[agent_id]>0:
+                self.agent_dead+=1
+            self.weapon_ammo+=(state.weapon_ammo+state.spare_ammo)/75.
             if state.hit_enemy:
-                self.hurt_num += 1
-            if state.health <= 0:
-                self.dead_num +=1
+                self.hit_num+=1
+            if state.hit_by_enemy:
+                self.hitted_num+=1
+            
+            if state.is_reload and not self.state_dict[agent_id].is_reload:
+                self.reload+=1
+            
+                
+
 
             self.state_dict[agent_id] = state
             reward_dict[agent_id] = self._compute_reward(state, agent_id)
@@ -178,11 +198,16 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
             done_dict[agent_id] = self.game.is_episode_finished()
             info_dict[agent_id] = {}
             self.collected_supplys[agent_id] = state.num_supply
-        if self.running_steps % 100 ==0:
-            with open(self.log_path + "log.txt", "a") as f:
-                f.write(f"{self.episode_num}-{self.running_steps} : {self.collected_supplys} \n")
-        self.writer.add_scalar('hit_num',self.hurt_num,global_step=self.time_steps)
-        self.writer.add_scalar('dead_num',self.hurt_num,global_step=self.time_steps)
+        # if self.running_steps % 100 ==0:
+        #     with open(self.log_path + "log.txt", "a") as f:
+        #         f.write(f"{self.episode_num}-{self.running_steps} : {self.collected_supplys} \n")
+        if self.time_steps %50 ==0:
+            self.writer.add_scalar('hp',self.agent_hp/len(self.agent_ids),global_step=self.time_steps)
+            self.writer.add_scalar('dead_num',self.agent_dead/len(self.agent_ids),global_step=self.time_steps)
+            self.writer.add_scalar('weapon_ammo_num', self.weapon_ammo/len(self.agent_ids), global_step=self.time_steps)
+            self.writer.add_scalar('hit_num', self.hit_num, global_step=self.time_steps)
+            self.writer.add_scalar('reload_num', self.reload, global_step=self.time_steps)
+            self.writer.add_scalar('hitted_num', self.hitted_num, global_step=self.time_steps)
 
 
 
@@ -216,13 +241,15 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
                     enemy.move_dir_x,
                     enemy.move_dir_y,
                     enemy.move_dir_z,
-                    enemy.move_speed,
+                    enemy.move_speed/10.,
+                    enemy.health/100.,
+                    1 if enemy.is_invincible else 0,
 
                 ]
-            for enemy in state.enemy_states]
-        enemy_distance = [get_distance([enemy[0],enemy[1],enemy[2]], get_position(state)) for enemy in self.np_enemy_states]
+            for enemy in state.enemy_states.values()]
+        # enemy_distance = [get_distance([enemy[0],enemy[1],enemy[2]], get_position(state)) for enemy in self.np_enemy_states]
 
-        enemy_states = [[0 for _ in range(7)] for _ in range(3)]
+        enemy_states = [[0 for _ in range(9)] for _ in range(3)]
 
         self.np_enemy_states.sort(key= lambda x:get_distance([x[0],x[1],x[2]], get_position(state)))
         for i in range(len(self.np_enemy_states)):
@@ -239,7 +266,7 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
                         supply.position_z,
                     ]
                 )
-                for supply in state.supply_states
+                for supply in state.supply_states.values()
             ]
 
             # reinitialize: get target information
@@ -261,21 +288,19 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
         move_x = state.move_dir_x
         move_y = state.move_dir_y
         move_z = state.move_dir_z
-        move_speed = state.move_speed
-        pitch = state.pitch
-        yaw = state.yaw
-
-        #to do add
-        weapon = [state.weapon_ammo,state.spare_ammo]
+        move_speed = state.move_speed/10.
+        pitch = state.pitch/90.
+        yaw = state.yaw/180.
 
 
+        obs = [[x,y,z,move_x,move_y,move_z,move_speed],
+               [pitch,yaw,state.weapon_ammo/15.,state.spare_ammo/60.],
+               target,enemy_states]
 
-        obs = [[x,y,z,move_x,move_y,move_z,move_speed],[pitch,yaw,state.weapon_ammo,state.spare_ammo],target,enemy_states]
         if self.args["use_depth"]:
             obs.append(state.depth_map.tolist())
         if self.running_steps <=5:
             self.target_supply[agent_id]=None
-        print(obs)
         return obs
 
 
@@ -299,9 +324,9 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
             #     reward += (state.num_supply - self.collected_supplys[agent_id])*10
 
             if state.hit_enemy:
-                reward+=10
+                reward+=100
             if state.hit_by_enemy:
-                reward-=10
+                reward-=100
 
         return reward
 
