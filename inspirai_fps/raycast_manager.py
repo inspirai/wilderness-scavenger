@@ -1,12 +1,13 @@
+import os
 import ctypes
 from ctypes import cdll
 from sys import platform
 
-import os
-from typing import List
-import numpy as np
 import trimesh
+import numpy as np
+from math import radians
 from numpy.ctypeslib import ndpointer
+from typing import List
 
 
 def perspective_frustum(hw_ratio, x_fov, znear, zfar):
@@ -22,8 +23,10 @@ class RaycastManager(object):
     DEFAULT_HEIGHT = 22
     DEFAULT_WIDTH = 38
     DEFAULT_FAR = 100
+    __VISION_ANGLE = 60
 
     def __init__(self, mesh_file_path):
+        self.mesh_file_path = mesh_file_path
         self.HEIGHT = self.DEFAULT_HEIGHT
         self.WIDTH = self.DEFAULT_WIDTH
         self.FAR = self.DEFAULT_FAR
@@ -32,8 +35,10 @@ class RaycastManager(object):
             lib_filename = "libraycaster.so"
         elif platform.startswith("darwin"):
             lib_filename = "libraycaster.dylib"
+        elif platform.startswith("win"):
+            lib_filename = "raycaster.dll"
         else:
-            raise NotImplementedError(platform)
+            raise NotImplementedError(f"{platform} is not supported")
 
         work_dir = os.path.dirname(__file__)
         lib_path = os.path.join(work_dir, "lib", lib_filename)
@@ -82,18 +87,21 @@ class RaycastManager(object):
             ]
             c_func.restype = ctypes.c_void_p
 
+            c_func = self.ray_lib.free_mesh
+            c_func.argtypes = [ctypes.c_void_p]
+
         except Exception:
             print("External library not loaded correctly: {}".format(lib_filename))
 
         self.depth_ptr = ctypes.POINTER(ctypes.c_void_p)()
 
-        mesh_0 = trimesh.load(mesh_file_path, force="mesh")
-        v = np.array(mesh_0.vertices).astype(np.float32)
-        f = np.array(mesh_0.faces).astype(np.uint32)
+        mesh = trimesh.load(mesh_file_path, force="mesh")
+        v = np.array(mesh.vertices).astype(np.float32)
+        f = np.array(mesh.faces).astype(np.uint32)
 
         c_func = self.ray_lib.init_mesh
         self.depth_ptr = c_func(self.depth_ptr, v, int(v.shape[0]), f, int(f.shape[0]))
-    
+
     def get_depth(
         self,
         position: List[float],
@@ -109,11 +117,12 @@ class RaycastManager(object):
         width = self.WIDTH
         far = self.FAR
 
-        position_in_mesh = np.asarray(position)
+        x, y, z = position
+        position_in_mesh = np.asarray([-x, y, z])  # negative x
         r = np.asarray(direction) * np.pi / 180
         cam_lookat = position_in_mesh + np.asarray(
-            [np.cos(r[2]) * np.cos(r[1]), -np.sin(r[1]), -np.sin(r[2]) * np.cos(r[1])]
-        )  # negative
+            [-np.sin(r[2]) * np.cos(r[1]), -np.sin(r[1]), np.cos(r[2]) * np.cos(r[1])]
+        )  # negative x
 
         num_cameras = 1
         out_depth_values_ptr = (ctypes.POINTER(ctypes.c_float) * num_cameras)()
@@ -127,7 +136,10 @@ class RaycastManager(object):
             cam_param_array_double[i, 6:9] = [0, 1, 0]
             cam_param_array_double[i, 9:10] = 1.0
             cam_param_array_double[i, 10:16] = perspective_frustum(
-                hw_ratio=float(height) / width, x_fov=0.85, znear=0.01, zfar=far
+                hw_ratio=float(height) / width,
+                x_fov=radians(self.__VISION_ANGLE // 2),
+                znear=0.01,
+                zfar=far,
             )
             cam_param_array_double[i, 16:18] = [height, width]
 
@@ -183,5 +195,13 @@ class RaycastManager(object):
         c_func = self.ray_lib.free_arrays
         c_func(arr_ptr_void, num_arrays)
 
+    def _free_mesh(self):
+        c_func = self.ray_lib.free_mesh
+        c_func(self.depth_ptr)
+
     def __repr__(self) -> str:
-        return "RayTracer(HEIGHT={}, WIDTH={}, FAR={})".format(self.HEIGHT, self.WIDTH, self.FAR)
+        return f"RayTracer(HEIGHT={self.HEIGHT}, WIDTH={self.WIDTH}, DEPTH={self.FAR}, mesh={self.mesh_file_path})"
+
+    def __del__(self):
+        self._free_mesh()
+        print(f"[free] memory used by {self.mesh_file_path} is freed")

@@ -12,7 +12,7 @@ def load_json(file_path):
 
 
 def get_picth_yaw(x, y, z):
-    pitch = np.arctan2(y, (x**2 + z**2)**0.5) / np.pi * 180
+    pitch = np.arctan2(-y, (x**2 + z**2)**0.5) / np.pi * 180
     yaw = np.arctan2(x, z) / np.pi * 180
     return pitch, yaw
 
