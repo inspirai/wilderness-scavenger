@@ -31,10 +31,30 @@
 - `IS_ATTACKING`: whether the agent is currently shooting
 - `IS_RELOADING`: whether the agent is currently reloading the weapon
 - `HIT_ENEMY`: whether the agent hit an enemy
+- `HIT_ENEMY_ID`: the id of the enemy that the agent hit
 - `HIT_BY_ENEMY`: whether the agent is hit by an enemy
+- `HIT_BY_ENEMY_ID`: the id of the enemy that the agent is hit by
 - `NUM_SUPPLIES`: the number of supplies collected by the agent
 - `IS_WAITING_RESPAWN`: whether the agent is waiting for respawn
 - `IS_INVINCIBLE`: whether the agent is invincible
+
+## Supply State Variable
+
+- `SupplyState.position_x`: the x coordinate value of the supply's location
+- `SupplyState.position_y`: the y coordinate value of the supply's location (vertical height)
+- `SupplyState.position_z`: the z coordinate value of the supply's location
+- `SupplyState.quantity`: the quantity of the supply
+- `SupplyState.id`: the id of the supply
+
+## Enemy State Variable
+
+- `EnemyStateDetailed.position_x`: the x coordinate value of the enemy's location
+- `EnemyStateDetailed.position_y`: the y coordinate value of the enemy's location (vertical height)
+- `EnemyStateDetailed.position_z`: the z coordinate value of the enemy's location
+- `EnemyStateDetailed.health`: the health value of the enemy
+- `EnemyStateDetailed.waiting_respawn`: whether the enemy is waiting for respawn
+- `EnemyStateDetailed.is_invinciable`: whether the enemy is invincible now
+- `EnemyStateDetailed.id`: the id of the enemy
 
 ## Game Mode
 
@@ -46,7 +66,7 @@
 
 Users can change the game configuration by using the following methods and the new game configuration will be applied to the next game when calling `Game.new_episode()`.
 
-- `Game.get_game_config`: get all game configuration parameters as a dictionary
+- `Game.set_game_config`: set the game configuration with a file path
 - `Game.set_episode_timeout`: set the episode timeout in seconds
 - `Game.set_map_id`: set the map id
 - `Game.set_game_mode`: set the game mode
@@ -75,23 +95,37 @@ Users can change the game configuration by using the following methods and the n
   - `num_clip_ammo`: the number of bullets in the agent's weapon clip
   - `num_pack_ammo`: the number of bullets in the agent's spare ammo
   - `attack`: the attack power of the agent
-- `Game.turn_on_record`: turn on recording of the game replay
-- `Game.turn_off_record`: turn off recording of the game replay
 - `Game.turn_on_depth_map`: turn on computing of the depth map in the agent state
 - `Game.turn_off_depth_map`: turn off computing of the depth map of the agent state
+- `Game.set_depth_map_size`: set the size (**width**, **height**, **far**) of the depth map in the agent state (default: (38, 22, 100))
+- `Game.random_start_location`: set the start location for the specified agent by randomly choosing a valid (outdoor or indoor) location in the map
+- `Game.random_target_location`: set the target location for the Navigation mode by randomly choosing a valid (outdoor or indoor) location in the map
 
 ## Game Workflow
 
 - `Game.init`: initialize the game server and pull up the backend game engine to connect to the game server
 - `Game.new_episode`: start a new episode of the game with all agent and game states reset to the initial ones
 - `Game.make_action`: send actions of agents (in `dict[int, list]`) from the game server to the backend game engine
-- `Game.get_state`: get the agent state (by id) from the backend game engine
+- `Game.get_state`: get the agent state (by `agent_id`) from the backend game engine
 - `Game.get_state_all`: get all agent states (as `dict[int, AgentState]`) from the backend game engine
 - `Game.is_episode_finished`: check whether the current running episode is finished
 - `Game.close`: close the game server and shutdown the backend game engine
 
 ## Global Variable
 
-- `Game.get_target_location`: get the target location (as `Tuple[float, float, float]`) of the Navigation mode
-- `Game.get_frame_count`: get the frame count of the current running episode
-- `Game.get_depth_map_size`: get the (width, height, max_depth) of the depth map (as `Tuple[int, int, int]`) in the agent state
+- `Game.get_game_config`: get the game configuration (as `dict`)
+- `Game.get_agent_name`: get the name of the specified agent (by `agent_id`)
+- `Game.get_start_location`: get the start location of the specified agent
+- `Game.get_target_location`: get the target location of the Navigation mode
+- `Game.get_time_step`: get the current frame count of the running episode
+- `Game.get_depth_map_size`: get the (**width**, **height**, **far**) of the depth map in the agent state (where **far** is the visible depth range)
+- `Game.get_valid_locations`: get coordinates of all valid **indoor** and **outdoor** locations (as `Dict[str, List[Tuple[float, float, float]]]`)
+- `Game.time_step_per_action`: get the number of frames between two consecutive actions
+- `Game.target_trigger_distance`: get the distance threshold for the target location to be considered as reached
+- `Game.use_depth_map`: get whether the depth map is used in the agent state
+
+## Game Replay
+
+- `Game.turn_on_record`: turn on recording of the game replay
+- `Game.turn_off_record`: turn off recording of the game replay
+- `Game.set_game_replay_suffix`: set the suffix of the game replay filename
