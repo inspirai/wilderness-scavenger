@@ -18,7 +18,7 @@ parser.add_argument("--replay-suffix", type=str, default="")
 parser.add_argument("--checkpoint-dir", type=str, default="checkpoints_track1_ppo")
 parser.add_argument("--detailed-log", action="store_true", help="whether to print detailed logs")
 parser.add_argument("--run", type=str, default="PPO", help="The RLlib-registered algorithm to use.")
-parser.add_argument("--stop-iters", type=int, default=100)
+parser.add_argument("--stop-iters", type=int, default=1000)
 parser.add_argument("--stop-timesteps", type=int, default=100000000)
 parser.add_argument("--stop-reward", type=float, default=95)
 
@@ -40,53 +40,17 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     ray.init()
-    alg = args.run
-    if alg =='ppo':
-        trainer = PPOTrainer(
-        config={
-            "env": NavigationBaseEnv,
-            "env_config": vars(args),
-            "framework": "torch",
-            "num_workers": args.num_workers,
-            "evaluation_interval": args.eval_interval,
-            "num_gpus":0
-        }
-    )
-    elif alg=='appo':
-        trainer = APPOTrainer(
-        config={
-            "env": NavigationBaseEnv,
-            "env_config": vars(args),
-            "framework": "torch",
-            "num_workers": args.num_workers,
-            "evaluation_interval": args.eval_interval,
-            "num_gpus":0
-        }
-    )
-    elif alg=='a3c':
-        trainer = A3CTrainer(
-        config={
-            "env": NavigationBaseEnv,
-            "env_config": vars(args),
-            "framework": "torch",
-            "num_workers": args.num_workers,
-            "evaluation_interval": args.eval_interval,
-            "num_gpus":0
-        }
-    )
-    elif alg=='impala':
-        trainer = ImpalaTrainer(
-        config={
-            "env": NavigationBaseEnv,
-            "env_config": vars(args),
-            "framework": "torch",
-            "num_workers": args.num_workers,
-            "evaluation_interval": args.eval_interval,
-            "num_gpus":0
-        }
-    )
-    else:
-        raise ValueError('No chioce algorithm')
+
+    trainer = PPOTrainer(
+    config={
+        "env": NavigationBaseEnv,
+        "env_config": vars(args),
+        "framework": "torch",
+        "num_workers": args.num_workers,
+        "evaluation_interval": args.eval_interval,
+        "train_batch_size": 800,
+    })
+
 
     
 
