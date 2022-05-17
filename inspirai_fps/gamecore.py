@@ -58,7 +58,9 @@ class StateVariable:
     IS_ATTACKING = "is_attack"
     IS_RELOADING = "is_reload"
     HIT_ENEMY = "hit_enemy"
+    HIT_ENEMY_ID = "hit_enemy_id"
     HIT_BY_ENEMY = "hit_by_enemy"
+    HIT_BY_ENEMY_ID = "hit_by_enemy_id"
     NUM_SUPPLY = "num_supply"
     IS_WAITING_RESPAWN = "is_waiting_respawn"
     IS_INVISIBLE = "is_invisible"
@@ -108,10 +110,10 @@ class EnemyStateDetailed:
         self.position_x = enemy_info.location.x
         self.position_y = enemy_info.location.y
         self.position_z = enemy_info.location.z
-        self.move_dir_x = enemy_info.move_dir.x
-        self.move_dir_y = enemy_info.move_dir.y
-        self.move_dir_z = enemy_info.move_dir.z
-        self.move_speed = enemy_info.move_speed
+        # self.move_dir_x = enemy_info.move_dir.x
+        # self.move_dir_y = enemy_info.move_dir.y
+        # self.move_dir_z = enemy_info.move_dir.z
+        # self.move_speed = enemy_info.move_speed
         self.health = enemy_info.hp
         self.id = enemy_info.enemy_id
         self.waiting_respawn = enemy_info.is_respawn
@@ -121,14 +123,14 @@ class EnemyStateDetailed:
         x = self.position_x
         y = self.position_y
         z = self.position_z
-        mx = self.move_dir_x
-        my = self.move_dir_y
-        mz = self.move_dir_z
-        ms = self.move_speed
+        # mx = self.move_dir_x
+        # my = self.move_dir_y
+        # mz = self.move_dir_z
+        # ms = self.move_speed
         h = self.health
         id = self.id
         w = self.waiting_respawn
-        return f"Enemy({id=})_Pos({x=:.2f},{y=:.2f},{z=:.2f})_MoveDir(x={mx:.2f},y={my:.2f},z={mz:.2f})_MoveSpeed({ms:.2f})_Health({h:.2f})_WaitingRespawn({w})"
+        return f"Enemy({id=})_Pos({x=:.2f},{y=:.2f},{z=:.2f})_Health({h:.2f})_WaitingRespawn({w})_Invincible({self.is_invincible})"
 
 
 class EnemyStateRough:
@@ -208,7 +210,9 @@ class AgentState:
         self.is_attack = obs_data.is_fire
         self.is_reload = obs_data.is_reload
         self.hit_enemy = obs_data.hit_enemy
+        self.hit_enemy_id = obs_data.hit_enemy_id
         self.hit_by_enemy = obs_data.hit_by_enemy
+        self.hit_by_enemy_id = obs_data.hit_by_enemy_id
         self.num_supply = obs_data.num_supply
         self.is_waiting_respawn = obs_data.is_waiting_respawn
         self.is_invincible = obs_data.is_invincible
@@ -222,11 +226,7 @@ class AgentState:
                 self.position_y + self.__CAMERA_HEIGHT,
                 self.position_z,
             ]
-            dir = [
-                0,
-                self.pitch,
-                self.yaw,
-            ]
+            dir = get_orientation(self)
             self.depth_map = self.ray_tracer.get_depth(pos, dir)[0]
 
         self.supply_states = {
@@ -250,7 +250,7 @@ class AgentState:
         dz = self.move_dir_z
         dir = [round(d, 2) for d in (dx, dy, dz)]
 
-        return f"AgentState(pos={pos},dir={dir},speed={self.move_speed},pitch={self.pitch},yaw={self.yaw},health={self.health},weapon_ammo={self.weapon_ammo},spare_ammo={self.spare_ammo},on_ground={self.on_ground},is_attack={self.is_attack},is_reload={self.is_reload},hit_enemy={self.hit_enemy},hit_by_enemy={self.hit_by_enemy},num_supply={self.num_supply},is_waiting_respawn={self.is_waiting_respawn},is_invincible={self.is_invincible},use_depth_map={self.depth_map is not None})"
+        return f"AgentState(pos={pos},dir={dir},speed={self.move_speed},pitch={self.pitch},yaw={self.yaw},health={self.health},weapon_ammo={self.weapon_ammo},spare_ammo={self.spare_ammo},on_ground={self.on_ground},is_attack={self.is_attack},is_reload={self.is_reload},hit_enemy_id={self.hit_enemy_id},hit_by_enemy_id={self.hit_by_enemy_id},num_supply={self.num_supply},is_waiting_respawn={self.is_waiting_respawn},is_invincible={self.is_invincible},use_depth_map={self.depth_map is not None})"
 
     def is_enemy_visible(self, enemy_info: simple_command_pb2.EnemyInfo):
         view_angle = [self.__ENEMY_VISIBLE_ANGLE / 16 * 9, self.__ENEMY_VISIBLE_ANGLE]
@@ -602,7 +602,8 @@ class Game:
         """Returns the current time steps in game"""
         return self.latest_request.time_step
 
-    def get_target_reach_distance(self):
+    @property
+    def target_trigger_distance(self):
         return self.__GM.trigger_range
 
     def init(self):

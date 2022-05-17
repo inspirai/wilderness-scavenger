@@ -2,6 +2,12 @@
 
 This is a platform for intelligent agent learning based on a 3D open-world FPS game developed by **Inspir.AI**.
 
+## Change Log
+
+- 2022-05-16: improved engine backend (Linux) with better stability (v1.0)
+  - Check out [Supported Platforms](#supported-platforms) for download links.
+  - Make sure to update to the latest version of the engine if you would like to use depth map or enemy state features.
+
 ## Competition Overview
 
 With a focus on learning intelligent agents in open-world games, this year we are hosting a new contest called *Wilderness Scavenger*. In this new game, which features a Battle Royale-style 3D open-world gameplay experience and a random PCG-based world generation, participants must learn agents that can perform subtasks common to FPS games, such as navigation, scouting, and skirmishing. To win the competition, agents must have strong perception of complex 3D environments and then learn to exploit various environmental structures (such as terrain, buildings, and plants) by developing flexible strategies to gain advantages over other competitors. Despite the difficulty of this goal, we hope that this new competition can serve as a cornerstone of research in AI-based gaming for open-world games.
@@ -53,11 +59,9 @@ We developed this repository to provide a training and evaluation platform for t
 
 We support the multiple platforms with different engine backends, including:
 
-<!-- - Windows: download the engine [here](https://drive.google.com/file/d/1CEpiFPpx5NsWgqL8yzaZQX9fGuyPUKDy/view?usp=sharing)
-- MacOS: download the engine [here](https://drive.google.com/file/d/1hgQa5OPve4QCBczLEGeOis2HhHbxI68m/view?usp=sharing) -->
-- Linux: download the engine from [Google Drive](https://drive.google.com/file/d/1V-Xm6h_kgBrXKOaZTkZSFMtl43YzI4FQ/view?usp=sharing) or [Feishu](https://scwc0a0eu7.feishu.cn/file/boxcnsFBB4VYG85caQE7odwezZb)
-- Windows: download the engine from [Google Drive](https://drive.google.com/file/d/1nUimRJVfn5ncskyoGziedqUZ1g8OtgJw/view?usp=sharing) or [Feishu](https://inspirai.feishu.cn/file/boxcn5onuZVrPg1r2kXtoehTEWe)
-- MacOS: download the engine from [Google Drive](https://drive.google.com/file/d/1PPRVGN50GsK9tpghScHAqAQ12Djr4Ff8/view?usp=sharing) or [Feishu](https://inspirai.feishu.cn/file/boxcnWQjQ5kGyhOn3r49NEU7U0f)
+- Linux: download the engine from [Google Drive](https://drive.google.com/file/d/1gDkaKtwC8QUFbrrO1Zc1VwPhb3QcHaLl/view?usp=sharing) or [Feishu](https://inspirai.feishu.cn/file/boxcnwohwxo3EqCUbOhRj4ESJBb) (last updated on 2022-05-16)
+- Windows: download the engine from [Google Drive](https://drive.google.com/file/d/1nUimRJVfn5ncskyoGziedqUZ1g8OtgJw/view?usp=sharing) or [Feishu](https://inspirai.feishu.cn/file/boxcn5onuZVrPg1r2kXtoehTEWe) (under repairing)
+- MacOS: download the engine from [Google Drive](https://drive.google.com/file/d/1PPRVGN50GsK9tpghScHAqAQ12Djr4Ff8/view?usp=sharing) or [Feishu](https://inspirai.feishu.cn/file/boxcnWQjQ5kGyhOn3r49NEU7U0f) (under repairing)
 
 ## Installation (from source)
 
