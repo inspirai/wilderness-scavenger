@@ -41,28 +41,63 @@ if __name__ == "__main__":
 
     ray.init()
 
-    trainer = PPOTrainer(
-    config={
-        "env": NavigationBaseEnv,
-        "env_config": vars(args),
-        "framework": "torch",
-        "num_workers": args.num_workers,
-        "evaluation_interval": args.eval_interval,
-        "train_batch_size": 800,
-    })
-
-
-    
-
+    alg = args.run
+    if alg =='ppo':
+        trainer = PPOTrainer(
+        config={
+            "env": NavigationBaseEnv,
+            "env_config": vars(args),
+            "framework": "torch",
+            "num_workers": args.num_workers,
+            "evaluation_interval": args.eval_interval,
+        }
+    )
+    elif alg=='appo':
+        trainer = APPOTrainer(
+        config={
+            "env": NavigationBaseEnv,
+            "env_config": vars(args),
+            "framework": "torch",
+            "num_workers": args.num_workers,
+            "evaluation_interval": args.eval_interval,
+            "num_gpus":0
+        }
+    )
+    elif alg=='a3c':
+        trainer = A3CTrainer(
+        config={
+            "env": NavigationBaseEnv,
+            "env_config": vars(args),
+            "framework": "torch",
+            "num_workers": args.num_workers,
+            "evaluation_interval": args.eval_interval,
+            "num_gpus":0
+        }
+    )
+    elif alg=='impala':
+        trainer = ImpalaTrainer(
+        config={
+            "env": NavigationBaseEnv,
+            "env_config": vars(args),
+            "framework": "torch",
+            "num_workers": args.num_workers,
+            "evaluation_interval": args.eval_interval,
+            "num_gpus":0
+        }
+    )
+    else:
+        raise ValueError('No such algorithm')
     while True:
         result = trainer.train()
         print(pretty_print(result))
 
-        if result["training_iteration"] >= args.stop_iters:
+        if result["episode_reward_mean"] >= args.stop_reward:
             os.makedirs(args.checkpoint_dir, exist_ok=True)
             trainer.save_checkpoint(args.checkpoint_dir)
             trainer.stop()
             break
 
-    print(pretty_print(result))
+    print("the training has done!!")
     ray.shutdown()
+
+
