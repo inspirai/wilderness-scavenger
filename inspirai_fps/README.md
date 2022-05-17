@@ -25,18 +25,18 @@
 - `StateVariable.CAMERA_DIR`: the direction of the camera
   - `pitch`: the vertical angle of the camera
   - `yaw`: the horizontal angle of the camera
-- `HEALTH`: the health percentage of the agent
-- `WEAPON_AMMO`: the number of bullets left in the agent's weapon clip
-- `SPARE_AMMO`: the number of bullets left in the agent's spare ammo
-- `IS_ATTACKING`: whether the agent is currently shooting
-- `IS_RELOADING`: whether the agent is currently reloading the weapon
-- `HIT_ENEMY`: whether the agent hit an enemy
-- `HIT_ENEMY_ID`: the id of the enemy that the agent hit
-- `HIT_BY_ENEMY`: whether the agent is hit by an enemy
-- `HIT_BY_ENEMY_ID`: the id of the enemy that the agent is hit by
-- `NUM_SUPPLIES`: the number of supplies collected by the agent
-- `IS_WAITING_RESPAWN`: whether the agent is waiting for respawn
-- `IS_INVINCIBLE`: whether the agent is invincible
+- `StateVariable.HEALTH`: the health percentage of the agent
+- `StateVariable.WEAPON_AMMO`: the number of bullets left in the agent's weapon clip
+- `StateVariable.SPARE_AMMO`: the number of bullets left in the agent's spare ammo
+- `StateVariable.IS_ATTACKING`: whether the agent is currently shooting
+- `StateVariable.IS_RELOADING`: whether the agent is currently reloading the weapon
+- `StateVariable.HIT_ENEMY`: whether the agent hit an enemy
+- `StateVariable.HIT_ENEMY_ID`: the id of the enemy that the agent hit
+- `StateVariable.HIT_BY_ENEMY`: whether the agent is hit by an enemy
+- `StateVariable.HIT_BY_ENEMY_ID`: the id of the enemy that the agent is hit by
+- `StateVariable.NUM_SUPPLIES`: the number of supplies collected by the agent
+- `StateVariable.IS_WAITING_RESPAWN`: whether the agent is waiting for respawn
+- `StateVariable.IS_INVINCIBLE`: whether the agent is invincible
 
 ## Supply State Variable
 
