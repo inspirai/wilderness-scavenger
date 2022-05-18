@@ -346,16 +346,20 @@ class Game:
         # initialize default game settings
         self.__GM = self.__get_default_GM()
         self.__use_depth_map = False
-        self.__ray_tracer = None
-        self.dmp_width = RaycastManager.DEFAULT_WIDTH
-        self.dmp_height = RaycastManager.DEFAULT_HEIGHT
-        self.dmp_far = RaycastManager.DEFAULT_FAR
-
+        
         # initialize default agent
-        self.add_agent(agent_name="agent_0")
+        self.add_agent()
 
         # load default map
         self.set_map_id(1)
+        
+        # load default ray tracer
+        mesh_name = f"{self.__GM.map_id:03d}.obj"
+        mesh_file_path = os.path.join(self.__map_dir, mesh_name)
+        self.__ray_tracer = RaycastManager(mesh_file_path)
+        self.dmp_width = self.__ray_tracer.WIDTH
+        self.dmp_height = self.__ray_tracer.HEIGHT
+        self.dmp_far = self.__ray_tracer.FAR
 
     def __get_default_GM(self):
         gm_command = simple_command_pb2.GMCommand()
@@ -708,10 +712,7 @@ class Game:
         mesh_name = f"{self.__GM.map_id:03d}.obj"
         mesh_file_path = os.path.join(self.__map_dir, mesh_name)
 
-        if (
-            self.__ray_tracer is None
-            or self.__ray_tracer.mesh_file_path != mesh_file_path
-        ):
+        if self.__ray_tracer.mesh_file_path != mesh_file_path:
             # release raytracer resources
             del self.__ray_tracer
             self.__ray_tracer = RaycastManager(mesh_file_path)
