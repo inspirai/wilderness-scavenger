@@ -97,8 +97,8 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
 
         self.action_pools = {
             ActionVariable.WALK_DIR: [0, 90, 180, 270],
-            ActionVariable.WALK_SPEED: [0, 5, 10],
-            ActionVariable.TURN_LR_DELTA: [-2, 0, 2],
+            ActionVariable.WALK_SPEED: [0, 4, 8],
+            ActionVariable.TURN_LR_DELTA: [-1, -0.5, 0, 0.5, 1],
             ActionVariable.LOOK_UD_DELTA: [-1, 0, 1],
             ActionVariable.JUMP: [True, False],
             ActionVariable.ATTACK: [False, True],
@@ -138,11 +138,10 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
         for agent_id in self.agent_ids:
             self.state_dict[agent_id] = self.game.get_state(agent_id)
             obs_dict[agent_id] = self._get_obs(self.state_dict[agent_id],agent_id)
-        self.episode_num+=1
 
-        
+
+        self.episode_num+=1
         self.agent_dead = 0
-        
         self.hit_num = 0
         self.reload = 0
         self.hitted_num = 0
@@ -152,14 +151,15 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
         # hit
         # reload
         # hitted
+        self.agent_hp = 0
+        self.weapon_ammo = 0
         return obs_dict
 
 
 
 
     def step(self, action_dict):
-        self.agent_hp = 0
-        self.weapon_ammo = 0
+        
 
         action_cmd_dict = {agent_id: self._action_process(action_dict[agent_id]) for agent_id in action_dict}
         self.game.make_action(action_cmd_dict)
@@ -176,9 +176,10 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
         for agent_id in action_dict:
 
             state = self.game.get_state(agent_id)
-            
             self.agent_hp+=state.health/100.
-            if state.health<=0 and self.state_dict[agent_id]>0:
+            
+           
+            if state.health<=0 and self.state_dict[agent_id].health>0:
                 self.agent_dead+=1
             self.weapon_ammo+=(state.weapon_ammo+state.spare_ammo)/75.
             if state.hit_enemy:
@@ -201,13 +202,15 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
         # if self.running_steps % 100 ==0:
         #     with open(self.log_path + "log.txt", "a") as f:
         #         f.write(f"{self.episode_num}-{self.running_steps} : {self.collected_supplys} \n")
-        if self.time_steps %50 ==0:
+        if self.game.is_episode_finished():
+            
+
             self.writer.add_scalar('hp',self.agent_hp/len(self.agent_ids),global_step=self.time_steps)
             self.writer.add_scalar('dead_num',self.agent_dead/len(self.agent_ids),global_step=self.time_steps)
             self.writer.add_scalar('weapon_ammo_num', self.weapon_ammo/len(self.agent_ids), global_step=self.time_steps)
-            self.writer.add_scalar('hit_num', self.hit_num, global_step=self.time_steps)
-            self.writer.add_scalar('reload_num', self.reload, global_step=self.time_steps)
-            self.writer.add_scalar('hitted_num', self.hitted_num, global_step=self.time_steps)
+            self.writer.add_scalar('hit_num', self.hit_num/len(self.agent_ids), global_step=self.time_steps)
+            self.writer.add_scalar('reload_num', self.reload/len(self.agent_ids), global_step=self.time_steps)
+            self.writer.add_scalar('hitted_num', self.hitted_num/len(self.agent_ids), global_step=self.time_steps)
 
 
 
@@ -310,7 +313,7 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
         奖励设计，（1）当前位置和目标位置的距离（2）装弹的负奖励（3）打到敌人正奖励（4）被敌人打到负奖励
         （5）捡到物资正奖励
         '''
-        reward = -0.1
+        reward = 0
         if not self.game.is_episode_finished():
             # if self.target_supply[agent_id] is None:
             #     return reward
@@ -325,8 +328,8 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
 
             if state.hit_enemy:
                 reward+=100
-            if state.hit_by_enemy:
-                reward-=100
+            # if state.hit_by_enemy:
+            #     reward-=100
 
         return reward
 
@@ -344,6 +347,7 @@ if __name__ == "__main__":
     from ray.rllib.agents.ppo import PPOTrainer
     from ray.tune.logger import pretty_print
     # from envs.envs_track2 import SupplyGatherDiscreteSingleTarget
+    from ray.rllib.agents.impala import ImpalaTrainer
 
     args = parser.parse_args()
     # env = SupplyBattleMultiAgentEnv(vars(args))
@@ -353,14 +357,15 @@ if __name__ == "__main__":
 
 
     ray.init()
-    agent = PPOTrainer(
+    agent = ImpalaTraineriner(
         config={
             "env": SupplyBattleMultiAgentEnv,
             "env_config": vars(args),
             "framework": "torch",
             "num_workers": args.num_workers,
             "evaluation_interval": args.eval_interval,
-            "train_batch_size": args.train_batch_size,  # default of ray is 4000
+            "num_gpus": 0,
+
         }
     )
     step = 0
