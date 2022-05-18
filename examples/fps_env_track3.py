@@ -109,7 +109,7 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
                 spaces.Box(-np.Inf, np.Inf, (7,), dtype=np.float32),
                 spaces.Box(-np.Inf, np.Inf, (4,), dtype=np.float32),
                 spaces.Box(-np.Inf, np.Inf, (3,), dtype=np.float32),
-                spaces.Box(-np.Inf, np.Inf, (3,9), dtype=np.float32),
+                spaces.Box(-np.Inf, np.Inf, (3,5), dtype=np.float32),
             ]
         if env_config["use_depth"]:
             self.game.turn_on_depth_map()
@@ -238,10 +238,6 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
                     enemy.position_x,
                     enemy.position_y,
                     enemy.position_z,
-                    enemy.move_dir_x,
-                    enemy.move_dir_y,
-                    enemy.move_dir_z,
-                    enemy.move_speed/10.,
                     enemy.health/100.,
                     1 if enemy.is_invincible else 0,
 
@@ -249,7 +245,7 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
             for enemy in state.enemy_states.values()]
         # enemy_distance = [get_distance([enemy[0],enemy[1],enemy[2]], get_position(state)) for enemy in self.np_enemy_states]
 
-        enemy_states = [[0 for _ in range(9)] for _ in range(3)]
+        enemy_states = [[0 for _ in range(5)] for _ in range(3)]
 
         self.np_enemy_states.sort(key= lambda x:get_distance([x[0],x[1],x[2]], get_position(state)))
         for i in range(len(self.np_enemy_states)):
@@ -264,6 +260,7 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
                         supply.position_x,
                         supply.position_y,
                         supply.position_z,
+                        supply.id,
                     ]
                 )
                 for supply in state.supply_states.values()
@@ -274,13 +271,18 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
         supply_distances = [get_distance([supply[0], supply[1], supply[2]], get_position(state)) for supply in
                             self.np_supply_states]
         # target supply is the closest supply
+      
 
         if self.target_supply[agent_id] is None:
             if len(supply_distances) >0:
                 self.target_supply[agent_id] = self.np_supply_states[supply_distances.index(min(supply_distances))].tolist()
+                target =self.target_supply[agent_id][:-1]
             else:
                 self.target_supply[agent_id] = self.supply_heatmap_center
-        target = self.target_supply[agent_id]
+                target = self.target_supply[agent_id]
+        
+
+        
 
         x = state.position_x
         y = state.position_y
@@ -298,7 +300,10 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
                target,enemy_states]
 
         if self.args["use_depth"]:
-            obs.append(state.depth_map.tolist())
+            map = np.array(state.depth_map.tolist())/100.
+            
+
+            obs.append(map.tolist())
         if self.running_steps <=5:
             self.target_supply[agent_id]=None
         return obs
@@ -312,21 +317,21 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
         '''
         reward = 0
         if not self.game.is_episode_finished():
-            # if self.target_supply[agent_id] is None:
-            #     return reward
-            # distance = get_distance([self.target_supply[agent_id][0], self.target_supply[agent_id][1],
-            #                         self.target_supply[agent_id][2]],get_position(state))
-            # reward += -distance
-            # if get_distance([self.target_supply[agent_id][0], self.target_supply[agent_id][1],
-            #                         self.target_supply[agent_id][2]],get_position(state))<=1:
-            #     self.target_supply[agent_id]=None
-            #     reward +=100
-            #     reward += (state.num_supply - self.collected_supplys[agent_id])*10
+            if self.target_supply[agent_id] is None:
+                return reward
+            distance = get_distance([self.target_supply[agent_id][0], self.target_supply[agent_id][1],
+                                    self.target_supply[agent_id][2]],get_position(state))
+            reward += -distance
+            if get_distance([self.target_supply[agent_id][0], self.target_supply[agent_id][1],
+                                    self.target_supply[agent_id][2]],get_position(state))<=1:
+                self.target_supply[agent_id]=None
+                reward +=100
+                reward += (state.num_supply - self.collected_supplys[agent_id])*10
 
             if state.hit_enemy:
                 reward+=100
-            # if state.hit_by_enemy:
-            #     reward-=100
+            if state.hit_by_enemy:
+                reward-=100
 
         return reward
 
