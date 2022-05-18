@@ -175,3 +175,12 @@ In the replay tool, you can:
   - Press **E**: switch observation mode (between first person, third person, free)
   - Press **Q**: switch between multiple agents
   - Press **ECS**: stop replay and return to the main menu
+
+  ## run command 
+
+  python baseline_track1_navigation.py --run ppo --map-id 008 --checkpoint-dir checkpoints_track1_ppo-map8
+
+
+  ## experiment list:
+
+  https://smlhic47en.feishu.cn/sheets/shtcn6sDIHci3WtQQvYfloXHJEa 
