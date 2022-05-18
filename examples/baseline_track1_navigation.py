@@ -9,18 +9,19 @@ parser.add_argument("--target-location", type=float, nargs=3, default=[0, 0, 0])
 parser.add_argument("--start-location", type=float, nargs=3, default=[0, 0, 0])
 parser.add_argument("--start-range", type=float, default=2)
 parser.add_argument("--start-hight", type=float, default=5)
-parser.add_argument("--engine-dir", type=str, default="../fps_linux")
+parser.add_argument("--engine-dir", type=str, default="../wildscav-linux-backend")
 parser.add_argument("--map-dir", type=str, default="../map_data")
-parser.add_argument("--num-workers", type=int, default=0)
+parser.add_argument("--num-workers", type=int, default=4)
 parser.add_argument("--eval-interval", type=int, default=None)
 parser.add_argument("--record", action="store_true")
 parser.add_argument("--replay-suffix", type=str, default="")
-parser.add_argument("--checkpoint-dir", type=str, default="checkpoints_track1_ppo")
+parser.add_argument("--checkpoint-dir", type=str, default="checkpoints_track1")
 parser.add_argument("--detailed-log", action="store_true", help="whether to print detailed logs")
 parser.add_argument("--run", type=str, default="ppo", help="The RLlib-registered algorithm to use.")
 parser.add_argument("--stop-iters", type=int, default=300)
-parser.add_argument("--stop-timesteps", type=int, default=100000000)
+parser.add_argument("--stop-timesteps", type=int, default=1e8)
 parser.add_argument("--stop-reward", type=float, default=95)
+parser.add_argument("--use-depth", action="store_true")
 
 if __name__ == "__main__":
     import os
@@ -89,8 +90,8 @@ if __name__ == "__main__":
         result = trainer.train()
         print(pretty_print(result))
 
-        if result["episode_reward_mean"] >= args.stop_iters:
-            os.makedirs(args.checkpoint_dir, exist_ok=True)
+        if result["timesteps"] >= args.stop_timesteps:
+            os.makedirs(args.checkpoint_dir+f"{alg}", exist_ok=True)
             trainer.save_checkpoint(args.checkpoint_dir)
             trainer.stop()
             break

@@ -33,6 +33,7 @@ class BaseEnv(gym.Env):
             self.game.turn_on_record()
         else:
             self.game.turn_off_record()
+           
         self.game.set_game_replay_suffix(self.replay_suffix)
 
 
@@ -89,16 +90,27 @@ class NavigationBaseEnv(BaseEnv):
 
         self.game.set_game_mode(Game.MODE_NAVIGATION)
         self.game.set_target_location(self.target_location)
+        if config["use_depth"]:
+            self.game.turn_on_depth_map()
 
         self.action_pools = {
             ActionVariable.WALK_DIR: [0, 90, 180, 270],
             ActionVariable.WALK_SPEED: [3, 6],
         }
-        self.action_space = spaces.MultiDiscrete([len(pool) for pool in self.action_pools.values()])
-        self.observation_space = spaces.Box(low=-1, high=1, shape=(3,), dtype=np.float32)
 
+        
+        self.action_space = spaces.MultiDiscrete([len(pool) for pool in self.action_pools.values()])
+        
+        self.observation_space = spaces.Box(low=-1, high=1, shape=(3,), dtype=np.float32)
         self.game.set_available_actions([action_name for action_name in self.action_pools.keys()])
         self.game.init()
+        self.game.new_episode()
+        if config["use_depth"]:
+            self.game.turn_on_depth_map()
+            width , height , max_depth = self.game.get_depth_map_size()
+            self.observation_space = spaces.Tuple([spaces.Box(low=-1, high=1, shape=(3,), dtype=np.float32),spaces.Box(0, max_depth, (height, width), dtype=np.float32)])
+
+        
 
     def _reset_game_config(self):
         self.start_location = self._sample_start_location()
@@ -134,7 +146,13 @@ class NavigationBaseEnv(BaseEnv):
         cur_pos = np.asarray(get_position(self.state))
         tar_pos = np.asarray(self.target_location)
         dir_vec = tar_pos - cur_pos
-        return dir_vec / np.linalg.norm(dir_vec)
+        v2 = dir_vec / np.linalg.norm(dir_vec)
+        v2 = v2.tolist()
+        obs = []
+        obs.append(v2)
+        if self.config["use_depth"]:
+            obs.append(self.state.depth_map.tolist())
+        return obs
 
     def _action_process(self, action):
         action_values = list(self.action_pools.values())

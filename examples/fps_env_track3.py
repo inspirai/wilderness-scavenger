@@ -37,7 +37,7 @@ parser.add_argument("--map-dir", type=str, default="../map_data")  # path to map
 parser.add_argument("--map-id", type=int, default=1)  # id of the map
 parser.add_argument("--use-depth", action="store_true")  # whether to use depth map
 parser.add_argument("--resume", action="store_true")  # whether to resume training from a checkpoint
-parser.add_argument("--checkpoint-path", type=str, default="./agent_track2_ppo", help="dir to checkpoint files")
+parser.add_argument("--checkpoint-dir", type=str, default="./agent_track2_ppo", help="dir to checkpoint files")
 parser.add_argument("--replay-interval", type=int, default=1, help="episode interval to save replay")
 parser.add_argument("--record", action="store_true", help="whether to record the game")
 parser.add_argument("--replay-suffix", type=str, default="", help="suffix of the replay filename")
@@ -68,9 +68,6 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
         time_stamp = f"{self.server_port}"
         self.log_path = os.path.expanduser("%s/%s" % (cur_path, time_stamp))
         self.writer = SummaryWriter(self.log_path,comment='metric')
-        with open(self.log_path + "log.txt", "w") as f:
-            f.write(
-                f">>> {self.__class__}, server_port: {self.server_port} , worker_index: {config.worker_index}, log:\n")
 
         self.game = Game(
             map_dir=args.map_dir,
@@ -357,7 +354,7 @@ if __name__ == "__main__":
 
 
     ray.init()
-    agent = ImpalaTraineriner(
+    agent = ImpalaTrainer(
         config={
             "env": SupplyBattleMultiAgentEnv,
             "env_config": vars(args),
