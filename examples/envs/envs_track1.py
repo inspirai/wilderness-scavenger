@@ -114,12 +114,12 @@ class NavigationBaseEnv(BaseEnv):
             self.observation_space = spaces.Tuple([spaces.Box(low=-300, high=300, shape=(6,), dtype=np.float32),spaces.Box(0, max_depth, (height, width), dtype=np.float32)])
 
         location = self.game.get_valid_locations()
-        indoor_loc = location["indoor"]
-        outdoor_loc = location["outdoor"]
+        self.indoor_loc = location["indoor"]
+        self.outdoor_loc = location["outdoor"]
         self.valid_loc_1000 = []
         self.valid_loc_3000 = []
         self.valid_loc_5000 = []
-        for loc in indoor_loc:
+        for loc in self.outdoor_loc:
             dis = get_distance(loc, self.target_location)
             if dis <= 50:
                 self.valid_loc_1000.append(loc)
@@ -187,8 +187,11 @@ class NavigationBaseEnv(BaseEnv):
             loc = random.choice(self.valid_loc_1000)
         elif self.episodes<=3000:
             loc = random.choice(self.valid_loc_3000)
-        else:
+        elif self.episodes<=8000:
             loc = random.choice(self.valid_loc_5000)
+        else:
+            loc.random.choice(self.outdoor_loc)
+
 
         return loc
 
