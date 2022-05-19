@@ -22,7 +22,8 @@ class BaseEnv(gym.Env):
         self.print_log = config.get("detailed_log", False)
 
         self.seed(config["random_seed"])
-        self.server_port = BASE_WORKER_PORT + config.worker_index
+
+        self.server_port = config.get("base_worker_port",BASE_WORKER_PORT) + config.worker_index
         print(f">>> New instance {self} on port: {self.server_port}")
         print(f"Worker Index: {config.worker_index}, VecEnv Index: {config.vector_index}")
 
@@ -87,7 +88,7 @@ class NavigationBaseEnv(BaseEnv):
     def __init__(self, config: EnvContext):
         super().__init__(config)
 
-        self.start_range = config["start_range"]
+        # self.start_range = config["start_range"]
         self.start_hight = config["start_hight"]
         self.target_location = config["target_location"]
 
@@ -98,7 +99,7 @@ class NavigationBaseEnv(BaseEnv):
 
         self.action_pools = {
             ActionVariable.WALK_DIR: [0, 45, 90, 135, 180, 225, 270],
-            ActionVariable.WALK_SPEED: [1, 3, 6],
+            ActionVariable.WALK_SPEED: [3, 6],
         }
 
         
@@ -127,7 +128,7 @@ class NavigationBaseEnv(BaseEnv):
                 self.valid_loc_3000.append(loc)
             elif dis <= 200:
                 self.valid_loc_5000.append(loc)
-
+        print(self.valid_loc_3000)
 
 
     def _reset_game_config(self):
@@ -183,16 +184,14 @@ class NavigationBaseEnv(BaseEnv):
         # x = self.target_location[0] + np.random.randint(-30,30)
         # z = self.target_location[2] + np.random.randint(-30,30)
 
-        if self.episodes<=1000:
+        if self.episodes<=500:
             loc = random.choice(self.valid_loc_1000)
-        elif self.episodes<=3000:
+        elif self.episodes<=2000:
             loc = random.choice(self.valid_loc_3000)
-        elif self.episodes<=8000:
+        elif self.episodes<=5000:
             loc = random.choice(self.valid_loc_5000)
         else:
             loc.random.choice(self.outdoor_loc)
-
-
         return loc
 
 
