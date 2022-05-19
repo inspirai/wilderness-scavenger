@@ -95,11 +95,11 @@ if __name__ == "__main__":
         print(pretty_print(result))
         if step !=0 and step %30==0:
             os.makedirs(args.checkpoint_dir+f"{alg}", exist_ok=True)
-            trainer.save_checkpoint(args.checkpoint_dir)
+            trainer.save_checkpoint(args.checkpoint_dir+f"{alg}")
 
         if result["episodes_total"] >= args.stop_episodes:
             os.makedirs(args.checkpoint_dir+f"{alg}", exist_ok=True)
-            trainer.save_checkpoint(args.checkpoint_dir)
+            trainer.save_checkpoint(args.checkpoint_dir+f"{alg}")
             trainer.stop()
             break
 
