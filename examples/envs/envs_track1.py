@@ -1,3 +1,5 @@
+import random
+
 import gym
 import numpy as np
 from gym import spaces
@@ -35,6 +37,7 @@ class BaseEnv(gym.Env):
             self.game.turn_off_record()
            
         self.game.set_game_replay_suffix(self.replay_suffix)
+        self.episodes = 0
 
 
     def reset(self):
@@ -44,6 +47,7 @@ class BaseEnv(gym.Env):
         self.game.new_episode()
         self.state = self.game.get_state()
         self.running_steps = 0
+        self.episodes+=1
         return self._get_obs()
 
     def close(self):
@@ -85,7 +89,6 @@ class NavigationBaseEnv(BaseEnv):
 
         self.start_range = config["start_range"]
         self.start_hight = config["start_hight"]
-        self.trigger_range = self.game.get_target_reach_distance()
         self.target_location = config["target_location"]
 
         self.game.set_game_mode(Game.MODE_NAVIGATION)
@@ -94,23 +97,38 @@ class NavigationBaseEnv(BaseEnv):
             self.game.turn_on_depth_map()
 
         self.action_pools = {
-            ActionVariable.WALK_DIR: [0, 90, 180, 270],
-            ActionVariable.WALK_SPEED: [3, 6],
+            ActionVariable.WALK_DIR: [0, 45, 90, 135, 180, 225, 270],
+            ActionVariable.WALK_SPEED: [1, 3, 6],
         }
 
         
         self.action_space = spaces.MultiDiscrete([len(pool) for pool in self.action_pools.values()])
         
-        self.observation_space = spaces.Box(low=-1, high=1, shape=(3,), dtype=np.float32)
+        self.observation_space = spaces.Box(low=-300, high=300, shape=(6,), dtype=np.float32)
         self.game.set_available_actions([action_name for action_name in self.action_pools.keys()])
         self.game.init()
         self.game.new_episode()
         if config["use_depth"]:
             self.game.turn_on_depth_map()
             width , height , max_depth = self.game.get_depth_map_size()
-            self.observation_space = spaces.Tuple([spaces.Box(low=-1, high=1, shape=(3,), dtype=np.float32),spaces.Box(0, max_depth, (height, width), dtype=np.float32)])
+            self.observation_space = spaces.Tuple([spaces.Box(low=-300, high=300, shape=(6,), dtype=np.float32),spaces.Box(0, max_depth, (height, width), dtype=np.float32)])
 
-        
+        location = self.game.get_valid_locations()
+        indoor_loc = location["indoor"]
+        outdoor_loc = location["outdoor"]
+        self.valid_loc_1000 = []
+        self.valid_loc_3000 = []
+        self.valid_loc_5000 = []
+        for loc in indoor_loc:
+            dis = get_distance(loc, self.target_location)
+            if dis <= 50:
+                self.valid_loc_1000.append(loc)
+            elif dis <= 100:
+                self.valid_loc_3000.append(loc)
+            elif dis <= 200:
+                self.valid_loc_5000.append(loc)
+
+
 
     def _reset_game_config(self):
         self.start_location = self._sample_start_location()
@@ -125,9 +143,9 @@ class NavigationBaseEnv(BaseEnv):
         self.running_steps += 1
         cur_pos = get_position(self.state)
         tar_pos = self.target_location
-        reward = -get_distance(cur_pos, tar_pos)
-
-        if get_distance(cur_pos, tar_pos) <= self.trigger_range:
+        # reward = -get_distance(cur_pos, tar_pos)
+        reward =0
+        if get_distance(cur_pos, tar_pos) <= 1:
             reward += 100
             done = True
         if done:
@@ -146,12 +164,10 @@ class NavigationBaseEnv(BaseEnv):
         cur_pos = np.asarray(get_position(self.state))
         tar_pos = np.asarray(self.target_location)
         dir_vec = tar_pos - cur_pos
-        v2 = dir_vec / np.linalg.norm(dir_vec)
-        v2 = v2.tolist()
-        obs = []
-        obs.append(v2)
+        obs = np.concatenate([cur_pos,tar_pos])
+
         if self.config["use_depth"]:
-            obs.append(self.state.depth_map.tolist())
+            obs = np.concatenate([obs,self.state.depth_map],axis=1)
         return obs
 
     def _action_process(self, action):
@@ -159,13 +175,21 @@ class NavigationBaseEnv(BaseEnv):
         return [action_values[i][action[i]] for i in range(len(action))]
 
     def _sample_start_location(self):
-        angle = np.random.uniform(0, 360)
-        distance_to_trigger = abs(np.random.normal(scale=self.start_range))
-        vec_len = self.trigger_range + distance_to_trigger
-        dx = np.sin(angle) * vec_len
-        dz = np.cos(angle) * vec_len
-        x = self.target_location[0] + np.random.randint(-30,30)
-        z = self.target_location[2] + np.random.randint(-30,30)
-        return [x, self.start_hight, z]
+        # angle = np.random.uniform(0, 360)
+        # distance_to_trigger = abs(np.random.normal(scale=self.start_range))
+        # vec_len = self.trigger_range + distance_to_trigger
+        # dx = np.sin(angle) * vec_len
+        # dz = np.cos(angle) * vec_len
+        # x = self.target_location[0] + np.random.randint(-30,30)
+        # z = self.target_location[2] + np.random.randint(-30,30)
+
+        if self.episodes<=1000:
+            loc = random.choice(self.valid_loc_1000)
+        elif self.episodes<=3000:
+            loc = random.choice(self.valid_loc_3000)
+        else:
+            loc = random.choice(self.valid_loc_5000)
+
+        return loc
 
 

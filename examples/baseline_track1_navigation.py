@@ -1,4 +1,5 @@
 import argparse
+import sys
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-T", "--timeout", type=int, default=60 * 2)  # The time length of one game (sec)
@@ -22,6 +23,7 @@ parser.add_argument("--stop-iters", type=int, default=300)
 parser.add_argument("--stop-timesteps", type=int, default=1e8)
 parser.add_argument("--stop-reward", type=float, default=95)
 parser.add_argument("--use-depth", action="store_true")
+parser.add_argument("--stop-episodes", type=float, default=10000)
 
 if __name__ == "__main__":
     import os
@@ -86,11 +88,16 @@ if __name__ == "__main__":
     )
     else:
         raise ValueError('No such algorithm')
+    step=0
     while True:
+        step+=1
         result = trainer.train()
         print(pretty_print(result))
+        if step !=0 and step %30==0:
+            os.makedirs(args.checkpoint_dir+f"{alg}", exist_ok=True)
+            trainer.save_checkpoint(args.checkpoint_dir)
 
-        if result["timesteps"] >= args.stop_timesteps:
+        if result["episodes_total"] >= args.stop_episodes:
             os.makedirs(args.checkpoint_dir+f"{alg}", exist_ok=True)
             trainer.save_checkpoint(args.checkpoint_dir)
             trainer.stop()
@@ -98,5 +105,6 @@ if __name__ == "__main__":
 
     print("the training has done!!")
     ray.shutdown()
+    sys.exit()
 
 
