@@ -186,12 +186,12 @@ class NavigationBaseEnv(BaseEnv):
 
         if self.episodes<=500:
             loc = random.choice(self.valid_loc_1000)
-        elif self.episodes<=2000:
+        elif self.episodes<=3000:
             loc = random.choice(self.valid_loc_3000)
-        elif self.episodes<=5000:
+        elif self.episodes<=4000:
             loc = random.choice(self.valid_loc_5000)
         else:
-            loc.random.choice(self.outdoor_loc)
+            loc = random.choice(self.outdoor_loc)
         return loc
 
 

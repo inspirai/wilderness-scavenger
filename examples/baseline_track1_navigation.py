@@ -8,7 +8,7 @@ parser.add_argument("-M", "--map-id", type=int, default=1)
 parser.add_argument("-S", "--random-seed", type=int, default=0)
 parser.add_argument("--target-location", type=float, nargs=3, default=[0, 0, 0])
 parser.add_argument("--start-location", type=float, nargs=3, default=[0, 0, 0])
-parser.add_argument("--base-worker-port", type=float, default=50000)
+parser.add_argument("--base-worker-port", type=int, default=50000)
 parser.add_argument("--start-hight", type=float, default=5)
 parser.add_argument("--engine-dir", type=str, default="../wildscav-linux-backend")
 parser.add_argument("--map-dir", type=str, default="../map_data")
@@ -23,7 +23,7 @@ parser.add_argument("--stop-iters", type=int, default=300)
 parser.add_argument("--stop-timesteps", type=int, default=1e8)
 parser.add_argument("--stop-reward", type=float, default=95)
 parser.add_argument("--use-depth", action="store_true")
-parser.add_argument("--stop-episodes", type=float, default=10000)
+parser.add_argument("--stop-episodes", type=float, default=50000)
 
 if __name__ == "__main__":
     import os
@@ -93,7 +93,7 @@ if __name__ == "__main__":
         step+=1
         result = trainer.train()
         print(pretty_print(result))
-        if step !=0 and step %30==0:
+        if step !=0 and step %300==0:
             os.makedirs(args.checkpoint_dir+f"{alg}", exist_ok=True)
             trainer.save_checkpoint(args.checkpoint_dir+f"{alg}")
 
