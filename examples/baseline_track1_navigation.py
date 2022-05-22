@@ -2,7 +2,7 @@ import argparse
 import sys
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-T", "--timeout", type=int, default=60 * 2)  # The time length of one game (sec)
+parser.add_argument("-T", "--timeout", type=int, default=60 * 5)  # The time length of one game (sec)
 parser.add_argument("-R", "--time-scale", type=int, default=10)
 parser.add_argument("-M", "--map-id", type=int, default=1)
 parser.add_argument("-S", "--random-seed", type=int, default=0)
@@ -13,7 +13,7 @@ parser.add_argument("--start-hight", type=float, default=5)
 parser.add_argument("--engine-dir", type=str, default="../wildscav-linux-backend")
 parser.add_argument("--map-dir", type=str, default="../map_data")
 parser.add_argument("--num-workers", type=int, default=10)
-parser.add_argument("--eval-interval", type=int, default=None)
+parser.add_argument("--eval-interval", type=int, default=10)
 parser.add_argument("--record", action="store_true")
 parser.add_argument("--replay-suffix", type=str, default="")
 parser.add_argument("--checkpoint-dir", type=str, default="checkpoints_track1")
@@ -40,7 +40,8 @@ if __name__ == "__main__":
     from envs.envs_track1 import NavigationBaseEnv
 
     args = parser.parse_args()
-
+    eval_cfg = vars(args).copy()
+    eval_cfg["in_evaluation"]=True
     ray.init()
     alg = args.run
     if alg =='ppo':
@@ -51,6 +52,8 @@ if __name__ == "__main__":
             "framework": "torch",
             "num_workers": args.num_workers,
             "evaluation_interval": args.eval_interval,
+            "evaluation_num_workers": 10,
+            "evaluation_config":{"env_config": eval_cfg},
         }
     )
     elif alg=='appo':
@@ -61,7 +64,9 @@ if __name__ == "__main__":
             "framework": "torch",
             "num_workers": args.num_workers,
             "evaluation_interval": args.eval_interval,
-            "num_gpus":0
+            "num_gpus":0,
+            "evaluation_num_workers": 10,
+            "evaluation_config":{"env_config": eval_cfg},
         }
     )
     elif alg=='a3c':
@@ -72,7 +77,9 @@ if __name__ == "__main__":
             "framework": "torch",
             "num_workers": args.num_workers,
             "evaluation_interval": args.eval_interval,
-            "num_gpus":0
+            "num_gpus":0,
+            "evaluation_num_workers": 10,
+            "evaluation_config":{"env_config": eval_cfg},
         }
     )
     elif alg=='impala':
@@ -83,7 +90,9 @@ if __name__ == "__main__":
             "framework": "torch",
             "num_workers": args.num_workers,
             "evaluation_interval": args.eval_interval,
-            "num_gpus":0
+            "num_gpus":0,
+            "evaluation_num_workers": 10,
+            "evaluation_config":{"env_config": eval_cfg},
         }
     )
     else:
@@ -92,14 +101,14 @@ if __name__ == "__main__":
     while True:
         step+=1
         result = trainer.train()
-        print(pretty_print(result))
-        if step !=0 and step %300==0:
-            os.makedirs(args.checkpoint_dir+f"{alg}", exist_ok=True)
-            trainer.save_checkpoint(args.checkpoint_dir+f"{alg}")
-
+        print(f"current_training_steps:{step},current_alg:{alg}")
+        if step !=0 and step %500==0:
+            os.makedirs(args.checkpoint_dir+f"{alg}"+str(args.map_id), exist_ok=True)
+            trainer.save_checkpoint(args.checkpoint_dir+f"{alg}"+str(args.map_id))
+            print("trainer save a checkpoint")
         if result["episodes_total"] >= args.stop_episodes:
-            os.makedirs(args.checkpoint_dir+f"{alg}", exist_ok=True)
-            trainer.save_checkpoint(args.checkpoint_dir+f"{alg}")
+            os.makedirs(args.checkpoint_dir+f"{alg}"+str(args.map_id), exist_ok=True)
+            trainer.save_checkpoint(args.checkpoint_dir+f"{alg}"+str(args.map_id))
             trainer.stop()
             break
 
