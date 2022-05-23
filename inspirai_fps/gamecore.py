@@ -765,6 +765,13 @@ class Game:
         self.__update_request()
         self.__time_step += self.__TIMESTEP_PER_ACTION
 
+    def log_movement_trajectory(self):
+        self.__log_trajectory = True
+        self.__points = []
+
+    def get_movement_trajectory(self):
+        return self.__points
+
     def __update_request(self):
         self.__latest_request = self.request_queue.get()
         if self.__latest_request.game_state == simple_command_pb2.GameState.over:
@@ -772,6 +779,11 @@ class Game:
         else:
             self.__is_episode_finished = False
             self.__num_supply = self.__latest_request.agent_obs_list[0].num_supply
+        
+        if self.__log_trajectory:
+            pos = vector3d_to_list(self.__latest_request.agent_obs_list[0].location)
+            x, z = pos[0], pos[2]
+            self.__points.append((x, z))
 
     def is_episode_finished(self):
         return self.__is_episode_finished

@@ -1,6 +1,6 @@
 import json
 import numpy as np
-from typing import Any, Dict, Iterable
+from typing import Any, Dict, Iterable, List, Tuple
 from rich.console import Console
 from rich.table import Table
 
@@ -12,7 +12,7 @@ def load_json(file_path):
 
 
 def get_picth_yaw(x, y, z):
-    pitch = np.arctan2(-y, (x**2 + z**2)**0.5) / np.pi * 180
+    pitch = np.arctan2(-y, (x**2 + z**2) ** 0.5) / np.pi * 180
     yaw = np.arctan2(x, z) / np.pi * 180
     return pitch, yaw
 
@@ -62,8 +62,22 @@ def set_GM_command(gm_cmd, config: Dict[str, Any]):
             set_GM_command(field, value)
 
 
-class ResultLogger:
+def plot_movement_trajectory(points: List[Tuple[float, float]], save_path: str):
+    import matplotlib.pyplot as plt
+    
+    xs = [p[0] for p in points]
+    ys = [p[1] for p in points]
+    plt.plot(xs, ys, "o-", c="r")
+    # plt.xlim(-250, 250)
+    # plt.ylim(-250, 250)
 
+    for i, (x, y) in enumerate(points):
+        plt.annotate(i*5, (x, y), c="b")
+
+    plt.savefig(save_path)
+
+
+class ResultLogger:
     def __init__(self):
         self.console = Console()
         self.monitor_metrics = [
@@ -72,8 +86,7 @@ class ResultLogger:
             (["episode_reward_min"], 4),
             (["episode_reward_max"], 4),
             (["episode_reward_mean"], 4),
-            (["info", "learner", "default_policy", "learner_stats",
-              "entropy"], 4),
+            (["info", "learner", "default_policy", "learner_stats", "entropy"], 4),
             (["info", "learner", "default_policy", "learner_stats", "kl"], 4),
         ]
 
