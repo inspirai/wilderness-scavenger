@@ -326,6 +326,7 @@ class Game:
     __SUPPLY_DROP_PERCENT = 50
     __TIMESTEP_PER_ACTION = 5
     __MAX_WALK_SPEED = 10
+    __FRAME_RATE = 50
 
     def __init__(
         self,
@@ -343,6 +344,8 @@ class Game:
         self.__engine_log_dir = engine_log_dir
         self.__server_ip = server_ip
         self.__server_port = server_port
+        self.__time_step = 0
+        self.__latest_request = None
 
         # initialize default game settings
         self.__GM = self.__get_default_GM()
@@ -396,6 +399,42 @@ class Game:
         gm_command.supply_loss_percent_when_dead = Game.__SUPPLY_DROP_PERCENT
 
         return gm_command
+
+    def get_game_result(self):
+        """ do not call this function before one episode ends """
+        game_state = self.__latest_request.game_state
+        assert game_state == simple_command_pb2.GameState.over
+
+        obs = self.__latest_request.agent_obs_list[0]
+
+        if self.__GM.game_mode == Game.MODE_NAVIGATION:
+            reach_target = False
+            punish_time = 0
+            
+            loc = vector3d_to_list(obs.location)
+            tar = vector3d_to_list(self.__GM.target_location)
+
+            used_time = self.__time_step / self.__FRAME_RATE
+            distance_to_target = get_distance(loc, tar)
+
+            if (
+                used_time < self.__GM.timeout
+                or distance_to_target <= self.target_trigger_distance
+            ):
+                reach_target = True
+
+            if not reach_target:
+                punish_time = 2 * distance_to_target / self.__MAX_WALK_SPEED
+
+            return {
+                "reach_target": reach_target,
+                "punish_time": punish_time,
+                "used_time": used_time,
+            }
+        
+        return {
+            "num_supply": self.__num_supply,
+        }
 
     @property
     def time_step_per_action(self):
@@ -623,8 +662,8 @@ class Game:
             self.dmp_far = far
 
     def get_time_step(self):
-        """Returns the current time steps in game"""
-        return self.latest_request.time_step
+        """Returns the current number of ticks in this episode of the game"""
+        return self.__time_step
 
     @property
     def max_walk_speed(self):
@@ -685,7 +724,7 @@ class Game:
         print("Unity3D connected ...")
 
     def get_state(self, agent_id=0) -> AgentState:
-        for obs_data in self.latest_request.agent_obs_list:
+        for obs_data in self.__latest_request.agent_obs_list:
             if obs_data.id == agent_id:
                 return AgentState(
                     obs_data,
@@ -695,7 +734,7 @@ class Game:
 
     def get_state_all(self) -> Dict[int, AgentState]:
         state_dict = {}
-        for obs_data in self.latest_request.agent_obs_list:
+        for obs_data in self.__latest_request.agent_obs_list:
             agent_id = obs_data.id
             state_dict[agent_id] = AgentState(
                 obs_data, self.__ray_tracer, self.__use_depth_map
@@ -723,19 +762,28 @@ class Game:
                 setattr(agent_cmd, action_name, a)
 
         self.reply_queue.put(reply)
-        self.latest_reply = reply
-        self.latest_request = self.request_queue.get()
+        self.__update_request()
+        self.__time_step += self.__TIMESTEP_PER_ACTION
+
+    def __update_request(self):
+        self.__latest_request = self.request_queue.get()
+        if self.__latest_request.game_state == simple_command_pb2.GameState.over:
+            self.__is_episode_finished = True
+        else:
+            self.__is_episode_finished = False
+            self.__num_supply = self.__latest_request.agent_obs_list[0].num_supply
 
     def is_episode_finished(self):
-        return self.latest_request.game_state == simple_command_pb2.GameState.over
+        return self.__is_episode_finished
 
     def new_episode(self):
         reply = simple_command_pb2.A2S_Reply_Data()
         reply.game_state = simple_command_pb2.GameState.reset
         reply.gm_cmd.CopyFrom(self.__GM)
         self.reply_queue.put(reply)
-        self.lastest_reply = reply
-        self.latest_request = self.request_queue.get()
+        self.__update_request()
+        self.__time_step = 0
+
         print("Started new episode ...")
 
         # load mesh data
