@@ -325,13 +325,14 @@ class Game:
     __RESPAWN_TIME = 10
     __SUPPLY_DROP_PERCENT = 50
     __TIMESTEP_PER_ACTION = 5
+    __MAX_WALK_SPEED = 10
 
     def __init__(
         self,
-        map_dir="../map_data",
-        engine_dir="../unity3d",
-        engine_log_dir="./engine_logs",
-        server_port=50051,
+        map_dir=None,
+        engine_dir=None,
+        engine_log_dir=None,
+        server_port=50000,
         server_ip="127.0.0.1",
     ):
         self.__map_dir = map_dir
@@ -346,13 +347,13 @@ class Game:
         # initialize default game settings
         self.__GM = self.__get_default_GM()
         self.__use_depth_map = False
-        
+
         # initialize default agent
         self.add_agent()
 
         # load default map
         self.set_map_id(1)
-        
+
         # load default ray tracer
         mesh_name = f"{self.__GM.map_id:03d}.obj"
         mesh_file_path = os.path.join(self.__map_dir, mesh_name)
@@ -413,7 +414,10 @@ class Game:
     def get_game_config(self):
         game_config = MessageToDict(self.__GM)
         game_config["use_depth_map"] = self.__use_depth_map
-        game_config["ray_tracer"] = self.__ray_tracer
+        if self.__use_depth_map:
+            game_config["dmp_width"] = self.dmp_width
+            game_config["dmp_height"] = self.dmp_height
+            game_config["dmp_far"] = self.dmp_far
         return game_config
 
     def get_agent_name(self, agent_id):
@@ -430,7 +434,6 @@ class Game:
         self.__GM.game_mode = game_mode
 
     def set_map_id(self, map_id: int):
-        assert isinstance(map_id, int) and 1 <= map_id <= 100
         self.__GM.map_id = map_id
 
         # load location data
@@ -485,6 +488,9 @@ class Game:
             key: i for i, key in enumerate(self.__available_actions)
         }
 
+    def get_available_actions(self):
+        return self.__available_actions.copy()
+
     def set_game_replay_suffix(self, replay_suffix: str):
         assert isinstance(replay_suffix, str)
         self.__GM.replay_suffix = replay_suffix
@@ -497,9 +503,20 @@ class Game:
         center = [loc[0], 0, loc[1]]
         set_vector3d(self.__GM.supply_heatmap_center, center)
 
+    def random_supply_heatmap_center(self, indoor: bool = True):
+        locations = self.__indoor_locations if indoor else self.__outdoor_locations
+        loc = random.choice(locations)
+        set_vector3d(self.__GM.supply_heatmap_center, loc)
+
+    def get_supply_heatmap_center(self):
+        return vector3d_to_list(self.__GM.supply_heatmap_center)
+
     def set_supply_heatmap_radius(self, radius: int):
         assert isinstance(radius, int) and 1 <= radius <= 200
         self.__GM.supply_heatmap_radius = radius
+
+    def get_supply_heatmap_radius(self):
+        return self.__GM.supply_heatmap_radius
 
     def set_supply_outdoor_richness(self, richness: int):
         assert isinstance(richness, int) and 0 <= richness <= 50
@@ -607,6 +624,10 @@ class Game:
         return self.latest_request.time_step
 
     @property
+    def max_walk_speed(self):
+        return self.__MAX_WALK_SPEED
+
+    @property
     def target_trigger_distance(self):
         return self.__GM.trigger_range
 
@@ -640,17 +661,20 @@ class Game:
         else:
             raise NotImplementedError(f"Platform {sys.platform} is not supported")
 
-        os.makedirs(self.__engine_log_dir, exist_ok=True)
-        timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-        engine_log_name = f"{timestamp}-port-{self.__server_port}.log"
-        engine_log_path = os.path.join(self.__engine_log_dir, engine_log_name)
+        if self.__engine_log_dir:
+            os.makedirs(self.__engine_log_dir, exist_ok=True)
+            timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+            engine_log_name = f"{timestamp}-port-{self.__server_port}.log"
+            engine_log_path = os.path.join(self.__engine_log_dir, engine_log_name)
+            f = open(engine_log_path, "w")
+        else:
+            f = subprocess.DEVNULL
 
         # start unity3d game engine
-        with open(engine_log_path, "w") as f:
-            shell = sys.platform.startswith("win32")
-            self.engine_process = subprocess.Popen(
-                cmd.split(), stdout=f, stderr=f, shell=shell
-            )
+        shell = sys.platform.startswith("win32")
+        self.engine_process = subprocess.Popen(
+            cmd.split(), stdout=f, stderr=f, shell=shell
+        )
         print("Unity3D started ...")
 
         # waiting for unity3d to send the first request
@@ -690,7 +714,10 @@ class Game:
             agent_cmd = reply.agent_cmd_list.add()
             agent_cmd.id = agent_id
             for action_name, idx in self.__action_idx_map.items():
-                setattr(agent_cmd, action_name, action[idx])
+                a = action[idx]
+                if action_name == ActionVariable.WALK_SPEED:
+                    a = min(a, self.__MAX_WALK_SPEED)
+                setattr(agent_cmd, action_name, a)
 
         self.reply_queue.put(reply)
         self.latest_reply = reply
