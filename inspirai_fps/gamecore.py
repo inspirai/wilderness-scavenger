@@ -550,14 +550,17 @@ class Game:
     ):
         assert isinstance(refresh_time, int) and refresh_time >= 1
         assert isinstance(heatmap_radius, int) and 1 <= heatmap_radius <= 200
-        assert isinstance(heatmap_center, list) and len(heatmap_center) == 2
+        assert isinstance(heatmap_center, list) and len(heatmap_center) in [2, 3]
         assert -150 <= heatmap_center[0] <= 150
         assert -150 <= heatmap_center[1] <= 150
         assert isinstance(indoor_richness, int) and 0 <= indoor_richness <= 100
         assert isinstance(outdoor_richness, int) and 0 <= outdoor_richness <= 50
 
         refresh = self.__GM.supply_refresh_datas.add()
-        center = [heatmap_center[0], 0, heatmap_center[1]]
+        if len(heatmap_center) == 2:
+            center = [heatmap_center[0], 0, heatmap_center[1]]
+        else:
+            center = heatmap_center
         set_vector3d(refresh.supply_heatmap_center, center)
         refresh.supply_heatmap_radius = heatmap_radius
         refresh.supply_refresh_time = refresh_time
