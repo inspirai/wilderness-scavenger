@@ -192,3 +192,50 @@ class NavigationBaseEnv(BaseEnv):
         return loc
 
 
+class NavigationEnv(gym.Env):
+    def __init__(self, config: EnvContext):
+        self.config = config
+
+        dmp_width = config["dmp_width"]
+        dmp_height = config["dmp_height"]
+        dmp_far = config["dmp_far"]
+
+        obs_space_1 = spaces.Box(low=-np.Inf, high=np.Inf, shape=(3,), dtype=np.float32)
+        obs_space_2 = spaces.Box(low=0, high=dmp_far, shape=(dmp_height, dmp_width), dtype=np.float32)
+        self.observation_space = spaces.Tuple([obs_space_1, obs_space_2])
+        
+        actions = {
+            ActionVariable.WALK_DIR: [0, 90, 180, 270],
+            ActionVariable.WALK_SPEED: [0, 5, 10],
+            ActionVariable.JUMP: [True, False],
+            ActionVariable.TURN_LR_DELTA: [v / 5 for v in (16, 8, 4, 2, 1, 0, -1, -2, -4, -8, -16)],
+            ActionVariable.LOOK_UD_DELTA: [v / 5 for v in (8, 4, 2, 1, 0, -1, -2, -4, -8)]
+        }
+        self.action_space = spaces.MultiDiscrete([len(actions[k]) for k in actions])
+        self.actions = actions
+
+        location = self.game.get_valid_locations()
+        self.indoor_loc = location["indoor"]
+        self.outdoor_loc = location["outdoor"]
+
+    def step(self, action_idxs):
+        action = self._action_process(action_idxs)
+        
+        # TODO: implement step funciton
+        
+        # return observation, reward, done, info
+
+    def reset(self) -> Any:
+        if random.random() > 0.5:
+            start_loc = random.choice(self.indoor_loc)
+        else:
+            start_loc = random.choice(self.outdoor_loc)
+
+        return super().reset()
+
+    def close(self) -> None:
+        return super().close()
+
+    def _action_process(self, action):
+        action_values = list(self.actions.values())
+        return [action_values[i][action[i]] for i in range(len(action))]
