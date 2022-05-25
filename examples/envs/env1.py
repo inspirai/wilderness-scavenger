@@ -1,4 +1,5 @@
 import random
+import cv2
 
 import gym
 import numpy as np
@@ -14,23 +15,29 @@ BASE_WORKER_PORT = 50000
 class NavigationEnv(gym.Env):
     def __init__(self, config: EnvContext):
         self.config = config
+        self.render_scale = config.get("render_scale", 1)
 
-        #only 240 * 320 can be aotu transform into conv model
+        # only 240 * 320 can be aotu transform into conv model
         dmp_width = config["dmp_width"]
         dmp_height = config["dmp_height"]
         dmp_far = config["dmp_far"]
 
-
         obs_space_1 = spaces.Box(low=-np.Inf, high=np.Inf, shape=(3,), dtype=np.float32)
-        obs_space_2 = spaces.Box(low=0, high=dmp_far, shape=(dmp_height, dmp_width), dtype=np.float32)
+        obs_space_2 = spaces.Box(
+            low=0, high=dmp_far, shape=(dmp_height, dmp_width), dtype=np.float32
+        )
         self.observation_space = spaces.Tuple([obs_space_1, obs_space_2])
 
         actions = {
             ActionVariable.WALK_DIR: [0, 90, 180, 270],
             ActionVariable.WALK_SPEED: [0, 5, 10],
             ActionVariable.JUMP: [True, False],
-            ActionVariable.TURN_LR_DELTA: [v / 5 for v in (16, 8, 4, 2, 1, 0, -1, -2, -4, -8, -16)],
-            ActionVariable.LOOK_UD_DELTA: [v / 5 for v in (8, 4, 2, 1, 0, -1, -2, -4, -8)]
+            ActionVariable.TURN_LR_DELTA: [
+                v / 5 for v in (16, 8, 4, 2, 1, 0, -1, -2, -4, -8, -16)
+            ],
+            ActionVariable.LOOK_UD_DELTA: [
+                v / 5 for v in (8, 4, 2, 1, 0, -1, -2, -4, -8)
+            ],
         }
 
         self.action_space = spaces.MultiDiscrete([len(actions[k]) for k in actions])
@@ -39,17 +46,27 @@ class NavigationEnv(gym.Env):
         self.replay_suffix = config.get("replay_suffix", "")
         self.print_log = config.get("detailed_log", False)
         self.seed(config["random_seed"])
-        self.server_port = config.get("base_worker_port", BASE_WORKER_PORT) + config.worker_index
+        self.server_port = (
+            config.get("base_worker_port", BASE_WORKER_PORT) + config.worker_index
+        )
         if self.config.get("in_evaluation", False):
             self.server_port += 10
         print(f">>> New instance {self} on port: {self.server_port}")
-        print(f"Worker Index: {config.worker_index}, VecEnv Index: {config.vector_index}")
+        print(
+            f"Worker Index: {config.worker_index}, VecEnv Index: {config.vector_index}"
+        )
 
-        self.game = Game(map_dir=config["map_dir"], engine_dir=config["engine_dir"], server_port=self.server_port)
+        self.game = Game(
+            map_dir=config["map_dir"],
+            engine_dir=config["engine_dir"],
+            server_port=self.server_port,
+        )
         self.game.set_map_id(config["map_id"])
         self.game.set_episode_timeout(config["timeout"])
         # self.game.set_random_seed(config["random_seed"])
-        self.game.set_available_actions([action_name for action_name in self.actions.keys()])
+        self.game.set_available_actions(
+            [action_name for action_name in self.actions.keys()]
+        )
         self.start_location = config.get("start_location", [0, 0, 0])
         if self.config.get("record", False):
             self.game.turn_on_record()
@@ -68,17 +85,23 @@ class NavigationEnv(gym.Env):
             101: [[-100, 100], [-100, 100]],
             102: [[-25, 175], [-50, 150]],
             103: [[-100, 0], [-50, 50]],
-            104: [[-125, -25], [-110, -30]]
+            104: [[-125, -25], [-110, -30]],
         }
-        limit = self.map_select.get(config["map_id"],[[-500,500],[-500,500]])
+        limit = self.map_select.get(config["map_id"], [[-500, 500], [-500, 500]])
         location = self.game.get_valid_locations()
         self.indoor_loc = []
         self.outdoor_loc = []
         for loc in location["indoor"]:
-            if limit[0][0] <= loc[0] <= limit[0][1] and limit[1][0] <= loc[2] <= limit[1][1]:
+            if (
+                limit[0][0] <= loc[0] <= limit[0][1]
+                and limit[1][0] <= loc[2] <= limit[1][1]
+            ):
                 self.indoor_loc.append(loc)
         for loc in location["outdoor"]:
-            if limit[0][0] <= loc[0] <= limit[0][1] and limit[1][0] <= loc[2] <= limit[1][1]:
+            if (
+                limit[0][0] <= loc[0] <= limit[0][1]
+                and limit[1][0] <= loc[2] <= limit[1][1]
+            ):
                 self.outdoor_loc.append(loc)
         self.game.init()
         self.episodes = 0
@@ -149,3 +172,15 @@ class NavigationEnv(gym.Env):
     def _action_process(self, action):
         action_values = list(self.actions.values())
         return [action_values[i][action[i]] for i in range(len(action))]
+
+    def render(self, mode="rgb_array"):
+        if mode == "rgb_array":
+            far = self.game.get_depth_map_size()[-1]
+            depth_map = self.state.depth_map
+            img = (depth_map / far * 255).astype(np.uint8)
+            h, w = img.shape
+            img = cv2.resize(img, (w * self.render_scale, h * self.render_scale))
+            img = cv2.applyColorMap(img, cv2.COLORMAP_JET)
+        else:
+            raise NotImplementedError(f"mode {mode} is not supported")
+        return img
