@@ -20,13 +20,13 @@ parser.add_argument("--detailed-log", action="store_true", help="whether to prin
 parser.add_argument("--run", type=str, default="ppo", help="The RLlib-registered algorithm to use.")
 parser.add_argument("--stop-iters", type=int, default=300)
 parser.add_argument("--stop-timesteps", type=int, default=1e8)
-parser.add_argument("--stop-reward", type=float, default=95)
+parser.add_argument("--stop-reward", type=float, default=98)
 parser.add_argument("--use-depth", action="store_true")
 parser.add_argument("--stop-episodes", type=float, default=50000)
 parser.add_argument("--dmp-width", type=int, default=320)
 parser.add_argument("--dmp-height", type=int, default=240)
 parser.add_argument("--dmp-far", type=int, default=200)
-parser.add_argument("--train-batch-size", type=int, default=2000)
+parser.add_argument("--train-batch-size", type=int, default=1000)
 
 if __name__ == "__main__":
     import os
@@ -71,6 +71,11 @@ if __name__ == "__main__":
             "num_workers": args.num_workers,
             "evaluation_interval": args.eval_interval,
             "num_gpus":0,
+            "model": {
+                # Auto-wrap the custom(!) model with an LSTM.
+                "use_lstm": True,
+                # To further customize the LSTM auto-wrapper.
+                "lstm_cell_size": 64,},
         }
     )
     elif alg=='a3c':
@@ -82,6 +87,11 @@ if __name__ == "__main__":
             "num_workers": args.num_workers,
             "evaluation_interval": args.eval_interval,
             "num_gpus":0,
+            "model": {
+                # Auto-wrap the custom(!) model with an LSTM.
+                "use_lstm": True,
+                # To further customize the LSTM auto-wrapper.
+                "lstm_cell_size": 64,},
         }
     )
     elif alg=='impala':
@@ -93,6 +103,11 @@ if __name__ == "__main__":
             "num_workers": args.num_workers,
             "evaluation_interval": args.eval_interval,
             "num_gpus":0,
+            "model": {
+                # Auto-wrap the custom(!) model with an LSTM.
+                "use_lstm": True,
+                # To further customize the LSTM auto-wrapper.
+                "lstm_cell_size": 64,},
         }
     )
     else:

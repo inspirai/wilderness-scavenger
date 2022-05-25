@@ -24,7 +24,7 @@ class NavigationEnv(gym.Env):
 
         obs_space_1 = spaces.Box(low=-np.Inf, high=np.Inf, shape=(3,), dtype=np.float32)
         obs_space_2 = spaces.Box(
-            low=0, high=dmp_far, shape=(dmp_height, dmp_width), dtype=np.float32
+            low=0, high=dmp_far, shape=(dmp_height, dmp_width, 1), dtype=np.float32
         )
         self.observation_space = spaces.Tuple([obs_space_1, obs_space_2])
 
@@ -114,7 +114,7 @@ class NavigationEnv(gym.Env):
         dir_vec = dir_vec / np.linalg.norm(dir_vec)
         obs.append(dir_vec)
 
-        obs.append(self.state.depth_map.tolist())
+        obs.append(self.state.depth_map.expand_dims(aixs=-1))
         return obs
 
     def step(self, action_idxs):
