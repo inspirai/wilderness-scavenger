@@ -1,13 +1,14 @@
-import random
 import cv2
+import random
+from typing import Dict
 
 import gym
 import numpy as np
 from gym import spaces
 from ray.rllib.env import EnvContext
 from inspirai_fps.utils import get_distance, get_position
-from inspirai_fps.gamecore import Game, ActionVariable
-import os
+from inspirai_fps.gamecore import Game
+from inspirai_fps.gamecore import ActionVariable as A
 
 BASE_WORKER_PORT = 50000
 
@@ -28,20 +29,47 @@ class NavigationEnv(gym.Env):
         )
         self.observation_space = spaces.Tuple([obs_space_1, obs_space_2])
 
-        actions = {
-            ActionVariable.WALK_DIR: [0, 90, 180, 270],
-            ActionVariable.WALK_SPEED: [0, 5, 10],
-            ActionVariable.JUMP: [True, False],
-            ActionVariable.TURN_LR_DELTA: [
-                v / 5 for v in (16, 8, 4, 2, 1, 0, -1, -2, -4, -8, -16)
+        # self.actions = {
+        #     A.WALK_DIR: [0, 90, 180, 270],
+        #     A.WALK_SPEED: [0, 5, 10],
+        #     A.JUMP: [True, False],
+        #     A.TURN_LR_DELTA: [v / 5 for v in (16, 8, 4, 2, 1, 0, -1, -2, -4, -8, -16)],
+        #     A.LOOK_UD_DELTA: [v / 5 for v in (8, 4, 2, 1, 0, -1, -2, -4, -8)],
+        # }
+        # self.action_space = spaces.MultiDiscrete([len(self.actions[k]) for k in self.actions])
+
+        self.action_dict = {
+            "move": [
+                [(A.WALK_DIR, 0), (A.WALK_SPEED, 0)],
+                [(A.WALK_DIR, 0), (A.WALK_SPEED, 5)],
+                [(A.WALK_DIR, 90), (A.WALK_SPEED, 5)],
+                [(A.WALK_DIR, 180), (A.WALK_SPEED, 5)],
+                [(A.WALK_DIR, 270), (A.WALK_SPEED, 5)],
             ],
-            ActionVariable.LOOK_UD_DELTA: [
-                v / 5 for v in (8, 4, 2, 1, 0, -1, -2, -4, -8)
+            "jump": [
+                [(A.JUMP, False)],
+                [(A.JUMP, True)],
+            ],
+            "turn_lr": [
+                [(A.TURN_LR_DELTA, -2)],
+                [(A.TURN_LR_DELTA, -1)],
+                [(A.TURN_LR_DELTA, 0)],
+                [(A.TURN_LR_DELTA, 1)],
+                [(A.TURN_LR_DELTA, 2)],
+            ],
+            "look_ud": [
+                [(A.LOOK_UD_DELTA, -2)],
+                [(A.LOOK_UD_DELTA, -1)],
+                [(A.LOOK_UD_DELTA, 0)],
+                [(A.LOOK_UD_DELTA, 1)],
+                [(A.LOOK_UD_DELTA, 2)],
             ],
         }
 
-        self.action_space = spaces.MultiDiscrete([len(actions[k]) for k in actions])
-        self.actions = actions
+        self.action_space = spaces.Dict({
+            k: spaces.Discrete(len(v)) for k, v in self.action_dict.items()
+        })
+
 
         self.replay_suffix = config.get("replay_suffix", "")
         self.print_log = config.get("detailed_log", False)
@@ -117,9 +145,11 @@ class NavigationEnv(gym.Env):
         obs.append(self.state.depth_map.tolist())
         return obs
 
-    def step(self, action_idxs):
-        action = self._action_process(action_idxs)
-        self.game.make_action({0: action})
+    def step(self, action):
+        # action = self._action_process(action_idxs)
+        # self.game.make_action({0: action})
+        action_list = self._action_process(action)
+        self.game.make_action_by_list({0: action_list})
         self.state = self.game.get_state()
         done = self.game.is_episode_finished()
 
@@ -169,18 +199,23 @@ class NavigationEnv(gym.Env):
         self.game.close()
         return super().close()
 
-    def _action_process(self, action):
-        action_values = list(self.actions.values())
-        return [action_values[i][action[i]] for i in range(len(action))]
+    # def _action_process(self, action):
+    #     action_values = list(self.actions.values())
+    #     return [action_values[i][action[i]] for i in range(len(action))]
+    
+    def _action_process(self, action: Dict[str, int]):
+        action_list = []
+        for action_name, action_idx in action.items():
+            action_list.extend(self.action_dict[action_name][action_idx])
+        return action_list
 
     def render(self, mode="rgb_array"):
-        if mode == "rgb_array":
-            far = self.game.get_depth_map_size()[-1]
-            depth_map = self.state.depth_map
-            img = (depth_map / far * 255).astype(np.uint8)
-            h, w = img.shape
-            img = cv2.resize(img, (w * self.render_scale, h * self.render_scale))
-            img = cv2.applyColorMap(img, cv2.COLORMAP_JET)
-        else:
-            raise NotImplementedError(f"mode {mode} is not supported")
-        return img
+        if mode != "rgb_array":
+            raise NotImplementedError("Only support rgb_array mode!")
+
+        far = self.game.get_depth_map_size()[-1]
+        depth_map = self.state.depth_map
+        img = (depth_map / far * 255).astype(np.uint8)
+        h, w = img.shape
+        img = cv2.resize(img, (w * self.render_scale, h * self.render_scale))
+        return cv2.applyColorMap(img, cv2.COLORMAP_JET)

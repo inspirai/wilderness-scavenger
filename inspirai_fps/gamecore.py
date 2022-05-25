@@ -611,7 +611,7 @@ class Game:
         return self.__GM.trigger_range
 
     def init(self):
-        assert len(self.__available_actions) > 0
+        # assert len(self.__available_actions) > 0
         self.request_queue = Queue()
         self.reply_queue = Queue()
 
@@ -691,6 +691,20 @@ class Game:
             agent_cmd.id = agent_id
             for action_name, idx in self.__action_idx_map.items():
                 setattr(agent_cmd, action_name, action[idx])
+
+        self.reply_queue.put(reply)
+        self.latest_reply = reply
+        self.latest_request = self.request_queue.get()
+
+    def make_action_by_list(self, action_all: Dict[int, List[Tuple[str, Any]]]):
+        reply = simple_command_pb2.A2S_Reply_Data()
+        reply.game_state = simple_command_pb2.GameState.update
+
+        for agent_id, action_list in action_all.items():
+            agent_cmd = reply.agent_cmd_list.add()
+            agent_cmd.id = agent_id
+            for action_name, value in action_list:
+                setattr(agent_cmd, action_name, value)
 
         self.reply_queue.put(reply)
         self.latest_reply = reply
