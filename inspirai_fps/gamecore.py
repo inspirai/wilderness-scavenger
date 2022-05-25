@@ -430,7 +430,7 @@ class Game:
         self.__GM.game_mode = game_mode
 
     def set_map_id(self, map_id: int):
-        assert isinstance(map_id, int) and 1 <= map_id <= 100
+        assert isinstance(map_id, int) and 1 <= map_id <= 105
         self.__GM.map_id = map_id
 
         # load location data

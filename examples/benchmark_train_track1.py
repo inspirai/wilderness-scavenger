@@ -23,8 +23,8 @@ parser.add_argument("--stop-timesteps", type=int, default=1e8)
 parser.add_argument("--stop-reward", type=float, default=98)
 parser.add_argument("--use-depth", action="store_true")
 parser.add_argument("--stop-episodes", type=float, default=50000)
-parser.add_argument("--dmp-width", type=int, default=320)
-parser.add_argument("--dmp-height", type=int, default=240)
+parser.add_argument("--dmp-width", type=int, default=42)
+parser.add_argument("--dmp-height", type=int, default=42)
 parser.add_argument("--dmp-far", type=int, default=200)
 parser.add_argument("--train-batch-size", type=int, default=1000)
 
@@ -113,6 +113,7 @@ if __name__ == "__main__":
     else:
         raise ValueError('No such algorithm')
     step=0
+    
     while True:
         step+=1
         result = trainer.train()

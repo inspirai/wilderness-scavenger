@@ -92,9 +92,9 @@ class NavigationEnv(gym.Env):
         self.game.set_map_id(config["map_id"])
         self.game.set_episode_timeout(config["timeout"])
         # self.game.set_random_seed(config["random_seed"])
-        self.game.set_available_actions(
-            [action_name for action_name in self.actions.keys()]
-        )
+        # self.game.set_available_actions(
+        #     [action_name for action_name in self.actions.keys()]
+        # )
         self.start_location = config.get("start_location", [0, 0, 0])
         if self.config.get("record", False):
             self.game.turn_on_record()
@@ -142,7 +142,7 @@ class NavigationEnv(gym.Env):
         dir_vec = dir_vec / np.linalg.norm(dir_vec)
         obs.append(dir_vec)
 
-        obs.append(self.state.depth_map.expand_dims(aixs=-1))
+        obs.append(np.expand_dims(self.state.depth_map,axis=-1))
         return obs
 
     def step(self, action):
