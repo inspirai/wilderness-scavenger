@@ -346,6 +346,7 @@ class Game:
         self.__server_port = server_port
         self.__time_step = 0
         self.__latest_request = None
+        self.__log_trajectory = False
 
         # initialize default game settings
         self.__GM = self.__get_default_GM()
@@ -768,6 +769,9 @@ class Game:
     def log_movement_trajectory(self):
         self.__log_trajectory = True
         self.__points = []
+
+    def log_movement_trajectory_stop(self):
+        self.__log_trajectory = False
 
     def get_movement_trajectory(self):
         return self.__points
