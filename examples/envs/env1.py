@@ -18,6 +18,8 @@ class NavigationEnv(gym.Env):
         self.config = config
         self.render_scale = config.get("render_scale", 1)
 
+        env_seed = config.get("random_seed", 0) + config.worker_index
+
         # only 240 * 320 can be aotu transform into conv model
         dmp_width = config["dmp_width"]
         dmp_height = config["dmp_height"]
@@ -25,18 +27,9 @@ class NavigationEnv(gym.Env):
 
         obs_space_1 = spaces.Box(low=-np.Inf, high=np.Inf, shape=(3,), dtype=np.float32)
         obs_space_2 = spaces.Box(
-            low=0, high=dmp_far, shape=(dmp_height, dmp_width, 1), dtype=np.float32
+            low=0, high=dmp_far, shape=(dmp_height, dmp_width), dtype=np.float32
         )
         self.observation_space = spaces.Tuple([obs_space_1, obs_space_2])
-
-        # self.actions = {
-        #     A.WALK_DIR: [0, 90, 180, 270],
-        #     A.WALK_SPEED: [0, 5, 10],
-        #     A.JUMP: [True, False],
-        #     A.TURN_LR_DELTA: [v / 5 for v in (16, 8, 4, 2, 1, 0, -1, -2, -4, -8, -16)],
-        #     A.LOOK_UD_DELTA: [v / 5 for v in (8, 4, 2, 1, 0, -1, -2, -4, -8)],
-        # }
-        # self.action_space = spaces.MultiDiscrete([len(self.actions[k]) for k in self.actions])
 
         self.action_dict = {
             "move": [
@@ -45,11 +38,12 @@ class NavigationEnv(gym.Env):
                 [(A.WALK_DIR, 90), (A.WALK_SPEED, 5)],
                 [(A.WALK_DIR, 180), (A.WALK_SPEED, 5)],
                 [(A.WALK_DIR, 270), (A.WALK_SPEED, 5)],
+                # [(A.JUMP, True)],
             ],
-            "jump": [
-                [(A.JUMP, False)],
-                [(A.JUMP, True)],
-            ],
+            # "jump": [
+            #     [(A.JUMP, False)],
+            #     [(A.JUMP, True)],
+            # ],
             "turn_lr": [
                 [(A.TURN_LR_DELTA, -2)],
                 [(A.TURN_LR_DELTA, -1)],
@@ -57,13 +51,13 @@ class NavigationEnv(gym.Env):
                 [(A.TURN_LR_DELTA, 1)],
                 [(A.TURN_LR_DELTA, 2)],
             ],
-            "look_ud": [
-                [(A.LOOK_UD_DELTA, -2)],
-                [(A.LOOK_UD_DELTA, -1)],
-                [(A.LOOK_UD_DELTA, 0)],
-                [(A.LOOK_UD_DELTA, 1)],
-                [(A.LOOK_UD_DELTA, 2)],
-            ],
+            # "look_ud": [
+            #     [(A.LOOK_UD_DELTA, -2)],
+            #     [(A.LOOK_UD_DELTA, -1)],
+            #     [(A.LOOK_UD_DELTA, 0)],
+            #     [(A.LOOK_UD_DELTA, 1)],
+            #     [(A.LOOK_UD_DELTA, 2)],
+            # ],
         }
 
         self.action_space = spaces.Dict({
@@ -73,7 +67,7 @@ class NavigationEnv(gym.Env):
 
         self.replay_suffix = config.get("replay_suffix", "")
         self.print_log = config.get("detailed_log", False)
-        self.seed(config["random_seed"])
+        self.seed(env_seed)
         self.server_port = (
             config.get("base_worker_port", BASE_WORKER_PORT) + config.worker_index
         )
@@ -91,10 +85,7 @@ class NavigationEnv(gym.Env):
         )
         self.game.set_map_id(config["map_id"])
         self.game.set_episode_timeout(config["timeout"])
-        # self.game.set_random_seed(config["random_seed"])
-        # self.game.set_available_actions(
-        #     [action_name for action_name in self.actions.keys()]
-        # )
+        self.game.set_random_seed(env_seed)
         self.start_location = config.get("start_location", [0, 0, 0])
         if self.config.get("record", False):
             self.game.turn_on_record()
@@ -116,34 +107,24 @@ class NavigationEnv(gym.Env):
             104: [[-125, -25], [-110, -30]],
         }
         limit = self.map_select.get(config["map_id"], [[-500, 500], [-500, 500]])
-        location = self.game.get_valid_locations()
-        self.indoor_loc = []
-        self.outdoor_loc = []
-        for loc in location["indoor"]:
-            if (
-                limit[0][0] <= loc[0] <= limit[0][1]
-                and limit[1][0] <= loc[2] <= limit[1][1]
-            ):
-                self.indoor_loc.append(loc)
-        for loc in location["outdoor"]:
-            if (
-                limit[0][0] <= loc[0] <= limit[0][1]
-                and limit[1][0] <= loc[2] <= limit[1][1]
-            ):
-                self.outdoor_loc.append(loc)
+        locations = self.game.get_valid_locations()
+        
+        def in_map(loc):
+            return limit[0][0] <= loc[0] <= limit[0][1] and limit[1][0] <= loc[2] <= limit[1][1]
+
+        self.indoor_loc = list(filter(in_map, locations["indoor"]))
+        self.outdoor_loc = list(filter(in_map, locations["outdoor"]))
+        
         self.game.init()
         self.episodes = 0
 
     def _get_obs(self):
-        obs = []
         cur_pos = np.asarray(get_position(self.state))
         tar_pos = np.asarray(self.target_location)
-        dir_vec = tar_pos - cur_pos
-        dir_vec = dir_vec / np.linalg.norm(dir_vec)
-        obs.append(dir_vec)
-
-        obs.append(np.expand_dims(self.state.depth_map,axis=-1))
-        return obs
+        return [
+            tar_pos - cur_pos,
+            self.state.depth_map.copy(),
+        ]
 
     def step(self, action):
         # action = self._action_process(action_idxs)
@@ -199,10 +180,6 @@ class NavigationEnv(gym.Env):
         self.game.close()
         return super().close()
 
-    # def _action_process(self, action):
-    #     action_values = list(self.actions.values())
-    #     return [action_values[i][action[i]] for i in range(len(action))]
-    
     def _action_process(self, action: Dict[str, int]):
         action_list = []
         for action_name, action_idx in action.items():
