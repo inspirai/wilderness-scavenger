@@ -766,6 +766,20 @@ class Game:
         self.__update_request()
         self.__time_step += self.__TIMESTEP_PER_ACTION
 
+    def make_action_by_list(self, action_all: Dict[int, List[Tuple[str, Any]]]):
+        reply = simple_command_pb2.A2S_Reply_Data()
+        reply.game_state = simple_command_pb2.GameState.update
+
+        for agent_id, action_list in action_all.items():
+            agent_cmd = reply.agent_cmd_list.add()
+            agent_cmd.id = agent_id
+            for action_name, value in action_list:
+                setattr(agent_cmd, action_name, value)
+
+        self.reply_queue.put(reply)
+        self.__update_request()
+        self.__time_step += self.__TIMESTEP_PER_ACTION
+
     def log_movement_trajectory(self):
         self.__log_trajectory = True
         self.__points = []
