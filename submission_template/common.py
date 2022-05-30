@@ -13,19 +13,6 @@ class RunningStatus:
     ERROR = 5
 
 
-DEFAULT_PAYLOAD = {
-    "id": 0,
-    "status": RunningStatus.PRE_START,
-    "current_episode": 0,
-    "total_episodes": 0,
-    "average_time_use": 0,
-    "average_time_punish": 0,
-    "average_time_total": 0,
-    "success_rate": 0,
-    "num_supply": 0,
-}
-
-
 def get_args():
     import argparse
 

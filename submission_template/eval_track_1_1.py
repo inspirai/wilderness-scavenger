@@ -81,7 +81,7 @@ def run_eval(args, eval_id=None):
 
             data = {
                 "id": eval_id,
-                "status": RunningStatus.FINISHED,
+                "status": RunningStatus.STARTED,
                 "current_episode": ep_idx,
                 "total_episodes": len(args.map_list) * args.episodes_per_map,
                 "average_time_use": sum(r["used_time"] for r in results) / len(results),

@@ -173,7 +173,7 @@ def run_eval(args, eval_id=None):
             ep_idx += 1
             data = {
                 "id": eval_id,
-                "status": RunningStatus.FINISHED,
+                "status": RunningStatus.STARTED,
                 "current_episode": ep_idx,
                 "total_episodes": len(args.map_list) * args.episodes_per_map,
                 "num_supply": sum(r["num_supply"] for r in results) / len(results)

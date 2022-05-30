@@ -87,3 +87,11 @@ Once you are satisfied with your solution, you can submit your solution followin
 - Do not modify the `eval.py` file.
 - Modify the `Dockerfile` file only when you need to add additional non-python dependencies.
 - Evaluation scripts for 3 tracks (`eval_track_*.py`) are only for your reference. You can use them to test your solution locally. The actual evaluation code may be different.
+
+## Evaluation Rules:
+  - Register an account for your team to use the online evaluation system.
+  - The signing up for a team account is reviewed by the organizers first and you will be notified by email if your team account is activated.
+  - Your team can keep only one (latest) submission for each track.
+  - We will only evaluate the latest submission for each track once every day.
+  - Your submissions will be reviewed by the organizers to check for legality before being built and allowed to run.
+  - You can check the evaluation progress and results after your submission starts running successfully.

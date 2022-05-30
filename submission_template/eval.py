@@ -52,7 +52,7 @@ if __name__ == "__main__":
 
     try:
         run_eval(args, eval_id)
-        message = send_results({"id": eval_id, "status": RunningStatus.STOPPED})
+        message = send_results({"id": eval_id, "status": RunningStatus.FINISHED})
     except Exception as e:
         message = send_results({"id": eval_id, "status": RunningStatus.ERROR})
 
