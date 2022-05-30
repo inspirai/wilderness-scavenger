@@ -20,7 +20,7 @@ if __name__ == "__main__":
     parser.add_argument("--local-test", action="store_true")
     args = parser.parse_args()
 
-    eval_id = int(os.environ.get("EVAL_ID", 0))
+    eval_id = os.environ.get("EVAL_ID", "0")
 
     print(f">>>>>>>>>>>>>>>>>> Evaluation ID: {eval_id} <<<<<<<<<<<<<<<<<<<<")
 

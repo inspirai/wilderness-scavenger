@@ -6,11 +6,24 @@ TURN_ON_RECORDING = False
 
 
 class RunningStatus:
-    PRE_START = 0
+    PENDING = 0
     STARTED = 1
     FINISHED = 2
     STOPPED = 3
     ERROR = 5
+
+
+DEFAULT_PAYLOAD = {
+    "id": None,
+    "status": RunningStatus.PENDING,
+    "current_episode": 0,
+    "total_episodes": 0,
+    "average_time_use": 0,
+    "average_time_punish": 0,
+    "average_time_total": 0,
+    "success_rate": 0,
+    "average_supply": 0,
+}
 
 
 def get_args():
@@ -26,8 +39,11 @@ def get_args():
     return parser.parse_args()
 
 
-def send_results(payload):
+def send_results(data):
     import requests
+
+    payload = DEFAULT_PAYLOAD.copy()
+    payload.update(data)
 
     url_head = "https://wildscav-eval.inspirai.com/api/evaluations/status?token=baiyangshidai_inspir"
     url = url_head + "&" + "&".join([f"{k}={v}" for k, v in payload.items()])
