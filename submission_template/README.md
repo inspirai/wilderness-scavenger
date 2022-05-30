@@ -80,7 +80,7 @@ Once you are satisfied with your solution, you can submit your solution followin
     zip -r /path/to/submission.zip * 
     ```
 
-- upload your solution to our [online evaluation system](https://wildscav-eval.inspirai.com)
+- upload your solution to our [online evaluation system](https://wildscav-eval.inspirai.com) (the maximum size of the zip file is limited 500MB)
 
 ## Important Notes
 

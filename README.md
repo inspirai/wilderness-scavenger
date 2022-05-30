@@ -8,6 +8,7 @@ This is a platform for intelligent agent learning based on a 3D open-world FPS g
   - Check out [Supported Platforms](#supported-platforms) for download links.
   - Make sure to update to the latest version of the engine if you would like to use depth map or enemy state features.
 - 2022-05-18: updated engine backend for Windows and MacOS (v1.0)
+- 2022-05-30: added submission template and instructions for submitting solutions to the online evaluation system
 
 ## Competition Overview
 
@@ -176,3 +177,9 @@ In the replay tool, you can:
   - Press **E**: switch observation mode (between first person, third person, free)
   - Press **Q**: switch between multiple agents
   - Press **ECS**: stop replay and return to the main menu
+
+## Q & A
+
+Please feel free to join our WeChat group to ask questions about the platform and online evaluation.
+
+![wechat-group](images/wechat.png)
