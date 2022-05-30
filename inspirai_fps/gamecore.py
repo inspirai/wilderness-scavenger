@@ -440,6 +440,10 @@ class Game:
     @property
     def time_step_per_action(self):
         return self.__TIMESTEP_PER_ACTION
+    
+    @property
+    def frame_rate(self):
+        return self.__FRAME_RATE
 
     def set_game_config(self, config_path: str):
         """
@@ -538,8 +542,6 @@ class Game:
     def set_supply_heatmap_center(self, loc: List[float]):
         """loc: a list of two numbers that represent the x and z values of the center location"""
         assert isinstance(loc, list) and len(loc) == 2
-        assert -150 <= loc[0] <= 150
-        assert -150 <= loc[1] <= 150
         center = [loc[0], 0, loc[1]]
         set_vector3d(self.__GM.supply_heatmap_center, center)
 
@@ -552,7 +554,7 @@ class Game:
         return vector3d_to_list(self.__GM.supply_heatmap_center)
 
     def set_supply_heatmap_radius(self, radius: int):
-        assert isinstance(radius, int) and 1 <= radius <= 200
+        assert isinstance(radius, int) and radius > 0
         self.__GM.supply_heatmap_radius = radius
 
     def get_supply_heatmap_radius(self):
@@ -589,10 +591,8 @@ class Game:
         outdoor_richness: int,
     ):
         assert isinstance(refresh_time, int) and refresh_time >= 1
-        assert isinstance(heatmap_radius, int) and 1 <= heatmap_radius <= 200
+        assert isinstance(heatmap_radius, int) and heatmap_radius > 0
         assert isinstance(heatmap_center, list) and len(heatmap_center) in [2, 3]
-        assert -150 <= heatmap_center[0] <= 150
-        assert -150 <= heatmap_center[1] <= 150
         assert isinstance(indoor_richness, int) and 0 <= indoor_richness <= 100
         assert isinstance(outdoor_richness, int) and 0 <= outdoor_richness <= 50
 
@@ -675,7 +675,6 @@ class Game:
         return self.__GM.trigger_range
 
     def init(self):
-        assert len(self.__available_actions) > 0
         self.request_queue = Queue()
         self.reply_queue = Queue()
 
