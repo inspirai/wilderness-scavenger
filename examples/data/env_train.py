@@ -135,8 +135,10 @@ class NavigationEnv(gym.Env):
     def _get_obs(self):
         cur_pos = np.asarray(get_position(self.state))
         tar_pos = np.asarray(self.target_location)
-        # self.state.depth_map.copy()
-        return tar_pos - cur_pos
+        return [
+            tar_pos - cur_pos,
+            self.state.depth_map.copy(),
+        ]
             
 
     def step(self, action):
@@ -191,7 +193,7 @@ class NavigationEnv(gym.Env):
         #     self.game.set_episode_timeout(300)
 
         # # if self.config.get("in_evaluation",False):
-        self.state = self.game.get_state()
+
         self.start_loc = random.choice(self.outdoor_loc)
 
         self.limit = get_distance(self.target_location, self.start_loc)
