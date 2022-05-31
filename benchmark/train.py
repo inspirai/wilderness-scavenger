@@ -3,14 +3,14 @@ import re
 import sys
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-T", "--timeout", type=int, default=60 * 5)  # The time length of one game (sec)
+parser.add_argument("-T", "--timeout", type=int, default=60 * 3)  # The time length of one game (sec)
 parser.add_argument("-R", "--time-scale", type=int, default=10)
 parser.add_argument("-M", "--map-id", type=int, default=1)
 parser.add_argument("-S", "--random-seed", type=int, default=0)
 parser.add_argument("--start-location", type=float, nargs=3, default=[0, 0, 0])
 parser.add_argument("--target-location", type=float, nargs=3, default=[0, 0, 0])
 parser.add_argument("--base-worker-port", type=int, default=50000)
-parser.add_argument("--engine-dir", type=str, default="../wildscav-linux-backend-v1.0-benchmark")
+parser.add_argument("--engine-dir", type=str, default="../wildscav-linux-backend")
 parser.add_argument("--map-dir", type=str, default="../101_104")
 parser.add_argument("--num-workers", type=int, default=10)
 parser.add_argument("--eval-interval", type=int, default=None)
@@ -27,7 +27,7 @@ parser.add_argument("--stop-episodes", type=float, default=200000)
 parser.add_argument("--dmp-width", type=int, default=42)
 parser.add_argument("--dmp-height", type=int, default=42)
 parser.add_argument("--dmp-far", type=int, default=200)
-parser.add_argument("--train-batch-size", type=int, default=1000)
+parser.add_argument("--train-batch-size", type=int, default=2000)
 parser.add_argument("--reload", type=bool, default=False)
 parser.add_argument("--reload-dir", type=str, default="")
 if __name__ == "__main__":
@@ -93,6 +93,7 @@ if __name__ == "__main__":
                 "num_workers": args.num_workers,
                 # "evaluation_interval": args.eval_interval,
                 "num_gpus": 0,
+                "train_batch_size": args.train_batch_size,  # default of ray is 4000
                 # "evaluation_config": {"env_config": eval_cfg,"explore":True,},
                 # "evaluation_num_workers": 10,
             }

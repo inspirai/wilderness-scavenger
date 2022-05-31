@@ -153,7 +153,8 @@ class NavigationEnv(gym.Env):
         cur_pos = get_position(state)
         tar_pos = self.target_location
         # reward = -get_distance(cur_pos, tar_pos)
-        reward = get_distance(get_position(self.state),tar_pos)-get_distance(cur_pos,tar_pos)
+        reward = -1
+        reward += get_distance(get_position(self.state),tar_pos)-get_distance(cur_pos,tar_pos)
         self.state = state
         if get_distance(cur_pos, tar_pos) <= 2:
             reward += 100
