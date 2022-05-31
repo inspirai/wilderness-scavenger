@@ -1,7 +1,11 @@
-# game configs
+import requests
+from rich.pretty import pprint
+
+
+# game configs -- depth map w/h ratio is 16:9
 DEPTH_MAP_FAR = 200
-DEPTH_MAP_WIDTH = 38 * 10
-DEPTH_MAP_HEIGHT = 22 * 10
+DEPTH_MAP_WIDTH = 64
+DEPTH_MAP_HEIGHT = 36
 TURN_ON_RECORDING = False
 
 
@@ -40,17 +44,14 @@ def get_args():
 
 
 def send_results(data):
-    import requests
-
-    payload = DEFAULT_PAYLOAD.copy()
-    payload.update(data)
-
     url_head = "https://wildscav-eval.inspirai.com/api/evaluations/status?token=baiyangshidai_inspir"
-    url = url_head + "&" + "&".join([f"{k}={v}" for k, v in payload.items()])
+    url = url_head + "&" + "&".join([f"{k}={v}" for k, v in data.items()])
+    message = requests.get(url).json()["message"]
 
-    print(url)
-
-    return requests.get(url).json()["message"]
+    pprint({
+        "URL": url,
+        "Response": message,
+    })
 
 
 if __name__ == "__main__":

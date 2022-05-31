@@ -27,33 +27,37 @@ if __name__ == "__main__":
     if not args.local_test:
         args.map_dir = REMOTE_MAP_DIR
         args.engine_dir = REMOTE_ENGINE_DIR
-        print(f">>>>>> Copying evaluation scripts")
+        print("======== Copying evaluation scripts ========")
         os.system("cp /root/submission_template/*.py . && ls")
-        print(f"<<<<<< Finished")
+        print("================= Finished =================")
 
     if args.track == "1a":
         from eval_track_1_1 import run_eval
         if not args.local_test:
             args.map_list = list(range(101, 111))
+            args.episode_timeout = 60 * 5
+            args.episode_per_map = 10
     elif args.track == "1b":
         from eval_track_1_2 import run_eval
         if not args.local_test:
             args.map_list = list(range(111, 121))
+            args.episode_timeout = 60 * 10
+            args.episode_per_map = 10
     elif args.track == "2":
         from eval_track_2 import run_eval
         if not args.local_test:
             args.map_list = list(range(121, 131))
+            args.episode_timeout = 60 * 15
+            args.episode_per_map = 1
     else:
         raise ValueError(f"Unknown track {args.track}")
 
     pprint(args)
 
-    from common import send_results, RunningStatus
-
     try:
         run_eval(args, eval_id)
-        message = send_results({"id": eval_id, "status": RunningStatus.FINISHED})
     except Exception as e:
-        message = send_results({"id": eval_id, "status": RunningStatus.ERROR})
-
-    print("Response:", message)
+        from common import RunningStatus, DEFAULT_PAYLOAD, send_results
+        data = DEFAULT_PAYLOAD.copy()
+        data.update({"id": eval_id, "status": RunningStatus.ERROR})
+        send_results(data)

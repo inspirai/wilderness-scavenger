@@ -1,10 +1,7 @@
-from common import DEPTH_MAP_WIDTH, DEPTH_MAP_HEIGHT, DEPTH_MAP_FAR, TURN_ON_RECORDING
-from common import RunningStatus, send_results
 from inspirai_fps import ActionVariable
 
 
 # evaluation configs
-EPISODE_TIMEOUT = 60 * 15  # fixed to 15 minutes for online evaluation
 NUM_AGENTS = 10
 USED_ACTIONS = [
     ActionVariable.WALK_DIR,
@@ -50,6 +47,16 @@ SUPPLY_CONFIGS = {
 
 
 def run_eval(args, eval_id=None):
+    from common import (
+        TURN_ON_RECORDING,
+        DEPTH_MAP_WIDTH,
+        DEPTH_MAP_HEIGHT,
+        DEPTH_MAP_FAR,
+        RunningStatus,
+        DEFAULT_PAYLOAD,
+        send_results
+    )
+
     from inspirai_fps import Game
     from inspirai_fps.utils import get_position
     from submission.agents import AgentSupplyBattle
@@ -64,7 +71,7 @@ def run_eval(args, eval_id=None):
     game = Game(map_dir=args.map_dir, engine_dir=args.engine_dir)
     game.set_random_seed(args.seed)
     game.set_game_mode(Game.MODE_SUP_BATTLE)
-    game.set_episode_timeout(args.episode_timeout or EPISODE_TIMEOUT)
+    game.set_episode_timeout(args.episode_timeout)
     game.set_available_actions(USED_ACTIONS)
     game.set_depth_map_size(DEPTH_MAP_WIDTH, DEPTH_MAP_HEIGHT, DEPTH_MAP_FAR)
     for agent_id in range(1, NUM_AGENTS):
@@ -72,8 +79,17 @@ def run_eval(args, eval_id=None):
     game.init()
 
     results = []
-
     ep_idx = 0
+    
+    data = DEFAULT_PAYLOAD.copy()
+    data.update({
+        "id": eval_id,
+        "status": RunningStatus.STARTED,
+        "current_episode": ep_idx,
+        "total_episodes": len(args.map_list) * args.episodes_per_map
+    })
+    send_results(data)
+
     for map_id in args.map_list:
         game.set_map_id(map_id)
 
@@ -171,15 +187,13 @@ def run_eval(args, eval_id=None):
             print(res)
 
             ep_idx += 1
-            data = {
-                "id": eval_id,
-                "status": RunningStatus.STARTED,
+            data.update({
                 "current_episode": ep_idx,
-                "total_episodes": len(args.map_list) * args.episodes_per_map,
                 "average_supply": sum(r["num_supply"] for r in results) / len(results)
-            }
-
-            message = send_results(data)
-            print("Response:", message)
+            })
+            send_results(data)
 
     game.close()
+
+    data.update({"status": RunningStatus.FINISHED})
+    send_results(data)
