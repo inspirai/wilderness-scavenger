@@ -88,7 +88,7 @@ class NavigationEnv(gym.Env):
         self.start_location = config.get("start_location", [0, 0, 0])
         if self.config.get("record", False):
             self.game.turn_on_record()
-        # self.game.turn_on_depth_map()
+        self.game.turn_on_depth_map()
         self.game.set_game_replay_suffix(self.replay_suffix)
         self.game.set_game_mode(Game.MODE_NAVIGATION)
         self.game.set_depth_map_size(dmp_width, dmp_height, far=dmp_far)
