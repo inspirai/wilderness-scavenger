@@ -7,7 +7,6 @@ inspirai_fps.egg-info/*
 .vscode/*
 dist/*
 build/*
-*.png
 docker_example
 examples/test*
 inspirai_fps/*.proto

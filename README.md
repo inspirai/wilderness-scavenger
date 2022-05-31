@@ -7,6 +7,8 @@ This is a platform for intelligent agent learning based on a 3D open-world FPS g
 - 2022-05-16: improved engine backend (Linux) with better stability (v1.0)
   - Check out [Supported Platforms](#supported-platforms) for download links.
   - Make sure to update to the latest version of the engine if you would like to use depth map or enemy state features.
+- 2022-05-18: updated engine backend for Windows and MacOS (v1.0)
+- 2022-05-30: added submission template and instructions for submitting solutions to the online evaluation system
 
 ## Competition Overview
 
@@ -60,8 +62,8 @@ We developed this repository to provide a training and evaluation platform for t
 We support the multiple platforms with different engine backends, including:
 
 - Linux: download the engine from [Google Drive](https://drive.google.com/file/d/1gDkaKtwC8QUFbrrO1Zc1VwPhb3QcHaLl/view?usp=sharing) or [Feishu](https://inspirai.feishu.cn/file/boxcnwohwxo3EqCUbOhRj4ESJBb) (last updated on 2022-05-16)
-- Windows: download the engine from [Google Drive](https://drive.google.com/file/d/1nUimRJVfn5ncskyoGziedqUZ1g8OtgJw/view?usp=sharing) or [Feishu](https://inspirai.feishu.cn/file/boxcn5onuZVrPg1r2kXtoehTEWe) (under repairing)
-- MacOS: download the engine from [Google Drive](https://drive.google.com/file/d/1PPRVGN50GsK9tpghScHAqAQ12Djr4Ff8/view?usp=sharing) or [Feishu](https://inspirai.feishu.cn/file/boxcnWQjQ5kGyhOn3r49NEU7U0f) (under repairing)
+- Windows: download the engine from [Google Drive](https://drive.google.com/file/d/1DwjnB7Harpeo5f57fjKpfp-43vvSLtQO/view?usp=sharing) or [Feishu](https://inspirai.feishu.cn/file/boxcnG8EP0RuTI3ImX2mmhat23d) (last updated on 2022-05-18)  
+- MacOS: download the engine from [Google Drive](https://drive.google.com/file/d/1I56Db8QvLpPQo8eUSi914MJT1-4ze-om/view?usp=sharing) or [Feishu](https://scwc0a0eu7.feishu.cn/file/boxcnfFqRae6L42wS2lRyhPDNXe) (last updated on 2022-05-18)
 
 ## Installation (from source)
 
@@ -176,11 +178,8 @@ In the replay tool, you can:
   - Press **Q**: switch between multiple agents
   - Press **ECS**: stop replay and return to the main menu
 
-  ## run command 
+## Q & A
 
-  python baseline_track1_navigation.py --run ppo --map-id 008 --checkpoint-dir checkpoints_track1_ppo-map8
+Please feel free to join our WeChat group to ask questions about the platform and online evaluation.
 
-
-  ## experiment list:
-
-  https://smlhic47en.feishu.cn/sheets/shtcn6sDIHci3WtQQvYfloXHJEa 
+![wechat-group](images/wechat.png)

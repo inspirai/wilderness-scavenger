@@ -325,13 +325,15 @@ class Game:
     __RESPAWN_TIME = 10
     __SUPPLY_DROP_PERCENT = 50
     __TIMESTEP_PER_ACTION = 5
+    __MAX_WALK_SPEED = 10
+    __FRAME_RATE = 50
 
     def __init__(
         self,
-        map_dir="../map_data",
-        engine_dir="../unity3d",
-        engine_log_dir="./engine_logs",
-        server_port=50051,
+        map_dir=None,
+        engine_dir=None,
+        engine_log_dir=None,
+        server_port=50000,
         server_ip="127.0.0.1",
     ):
         self.__map_dir = map_dir
@@ -342,17 +344,20 @@ class Game:
         self.__engine_log_dir = engine_log_dir
         self.__server_ip = server_ip
         self.__server_port = server_port
+        self.__time_step = 0
+        self.__latest_request = None
+        self.__log_trajectory = False
 
         # initialize default game settings
         self.__GM = self.__get_default_GM()
         self.__use_depth_map = False
-        
+
         # initialize default agent
         self.add_agent()
 
         # load default map
         self.set_map_id(1)
-        
+
         # load default ray tracer
         mesh_name = f"{self.__GM.map_id:03d}.obj"
         mesh_file_path = os.path.join(self.__map_dir, mesh_name)
@@ -396,9 +401,49 @@ class Game:
 
         return gm_command
 
+    def get_game_result(self):
+        """ do not call this function before one episode ends """
+        game_state = self.__latest_request.game_state
+        assert game_state == simple_command_pb2.GameState.over
+
+        obs = self.__latest_request.agent_obs_list[0]
+
+        if self.__GM.game_mode == Game.MODE_NAVIGATION:
+            reach_target = False
+            punish_time = 0
+            
+            loc = vector3d_to_list(obs.location)
+            tar = vector3d_to_list(self.__GM.target_location)
+
+            used_time = self.__time_step / self.__FRAME_RATE
+            distance_to_target = get_distance(loc, tar)
+
+            if (
+                used_time < self.__GM.timeout
+                or distance_to_target <= self.target_trigger_distance
+            ):
+                reach_target = True
+
+            if not reach_target:
+                punish_time = 2 * distance_to_target / self.__MAX_WALK_SPEED
+
+            return {
+                "reach_target": reach_target,
+                "punish_time": punish_time,
+                "used_time": used_time,
+            }
+        
+        return {
+            "num_supply": self.__num_supply,
+        }
+
     @property
     def time_step_per_action(self):
         return self.__TIMESTEP_PER_ACTION
+    
+    @property
+    def frame_rate(self):
+        return self.__FRAME_RATE
 
     def set_game_config(self, config_path: str):
         """
@@ -413,7 +458,10 @@ class Game:
     def get_game_config(self):
         game_config = MessageToDict(self.__GM)
         game_config["use_depth_map"] = self.__use_depth_map
-        game_config["ray_tracer"] = self.__ray_tracer
+        if self.__use_depth_map:
+            game_config["dmp_width"] = self.dmp_width
+            game_config["dmp_height"] = self.dmp_height
+            game_config["dmp_far"] = self.dmp_far
         return game_config
 
     def get_agent_name(self, agent_id):
@@ -430,7 +478,6 @@ class Game:
         self.__GM.game_mode = game_mode
 
     def set_map_id(self, map_id: int):
-        assert isinstance(map_id, int) and 1 <= map_id <= 105
         self.__GM.map_id = map_id
 
         # load location data
@@ -485,6 +532,9 @@ class Game:
             key: i for i, key in enumerate(self.__available_actions)
         }
 
+    def get_available_actions(self):
+        return self.__available_actions.copy()
+
     def set_game_replay_suffix(self, replay_suffix: str):
         assert isinstance(replay_suffix, str)
         self.__GM.replay_suffix = replay_suffix
@@ -492,14 +542,23 @@ class Game:
     def set_supply_heatmap_center(self, loc: List[float]):
         """loc: a list of two numbers that represent the x and z values of the center location"""
         assert isinstance(loc, list) and len(loc) == 2
-        assert -150 <= loc[0] <= 150
-        assert -150 <= loc[1] <= 150
         center = [loc[0], 0, loc[1]]
         set_vector3d(self.__GM.supply_heatmap_center, center)
 
+    def random_supply_heatmap_center(self, indoor: bool = True):
+        locations = self.__indoor_locations if indoor else self.__outdoor_locations
+        loc = random.choice(locations)
+        set_vector3d(self.__GM.supply_heatmap_center, loc)
+
+    def get_supply_heatmap_center(self):
+        return vector3d_to_list(self.__GM.supply_heatmap_center)
+
     def set_supply_heatmap_radius(self, radius: int):
-        assert isinstance(radius, int) and 1 <= radius <= 200
+        assert isinstance(radius, int) and radius > 0
         self.__GM.supply_heatmap_radius = radius
+
+    def get_supply_heatmap_radius(self):
+        return self.__GM.supply_heatmap_radius
 
     def set_supply_outdoor_richness(self, richness: int):
         assert isinstance(richness, int) and 0 <= richness <= 50
@@ -532,15 +591,16 @@ class Game:
         outdoor_richness: int,
     ):
         assert isinstance(refresh_time, int) and refresh_time >= 1
-        assert isinstance(heatmap_radius, int) and 1 <= heatmap_radius <= 200
-        assert isinstance(heatmap_center, list) and len(heatmap_center) == 2
-        assert -150 <= heatmap_center[0] <= 150
-        assert -150 <= heatmap_center[1] <= 150
+        assert isinstance(heatmap_radius, int) and heatmap_radius > 0
+        assert isinstance(heatmap_center, list) and len(heatmap_center) in [2, 3]
         assert isinstance(indoor_richness, int) and 0 <= indoor_richness <= 100
         assert isinstance(outdoor_richness, int) and 0 <= outdoor_richness <= 50
 
         refresh = self.__GM.supply_refresh_datas.add()
-        center = [heatmap_center[0], 0, heatmap_center[1]]
+        if len(heatmap_center) == 2:
+            center = [heatmap_center[0], 0, heatmap_center[1]]
+        else:
+            center = heatmap_center
         set_vector3d(refresh.supply_heatmap_center, center)
         refresh.supply_heatmap_radius = heatmap_radius
         refresh.supply_refresh_time = refresh_time
@@ -603,15 +663,18 @@ class Game:
             self.dmp_far = far
 
     def get_time_step(self):
-        """Returns the current time steps in game"""
-        return self.latest_request.time_step
+        """Returns the current number of ticks in this episode of the game"""
+        return self.__time_step
+
+    @property
+    def max_walk_speed(self):
+        return self.__MAX_WALK_SPEED
 
     @property
     def target_trigger_distance(self):
         return self.__GM.trigger_range
 
     def init(self):
-        # assert len(self.__available_actions) > 0
         self.request_queue = Queue()
         self.reply_queue = Queue()
 
@@ -640,17 +703,20 @@ class Game:
         else:
             raise NotImplementedError(f"Platform {sys.platform} is not supported")
 
-        os.makedirs(self.__engine_log_dir, exist_ok=True)
-        timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-        engine_log_name = f"{timestamp}-port-{self.__server_port}.log"
-        engine_log_path = os.path.join(self.__engine_log_dir, engine_log_name)
+        if self.__engine_log_dir:
+            os.makedirs(self.__engine_log_dir, exist_ok=True)
+            timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+            engine_log_name = f"{timestamp}-port-{self.__server_port}.log"
+            engine_log_path = os.path.join(self.__engine_log_dir, engine_log_name)
+            f = open(engine_log_path, "w")
+        else:
+            f = subprocess.DEVNULL
 
         # start unity3d game engine
-        with open(engine_log_path, "w") as f:
-            shell = sys.platform.startswith("win32")
-            self.engine_process = subprocess.Popen(
-                cmd.split(), stdout=f, stderr=f, shell=shell
-            )
+        shell = sys.platform.startswith("win32")
+        self.engine_process = subprocess.Popen(
+            cmd.split(), stdout=f, stderr=f, shell=shell
+        )
         print("Unity3D started ...")
 
         # waiting for unity3d to send the first request
@@ -658,7 +724,7 @@ class Game:
         print("Unity3D connected ...")
 
     def get_state(self, agent_id=0) -> AgentState:
-        for obs_data in self.latest_request.agent_obs_list:
+        for obs_data in self.__latest_request.agent_obs_list:
             if obs_data.id == agent_id:
                 return AgentState(
                     obs_data,
@@ -668,7 +734,7 @@ class Game:
 
     def get_state_all(self) -> Dict[int, AgentState]:
         state_dict = {}
-        for obs_data in self.latest_request.agent_obs_list:
+        for obs_data in self.__latest_request.agent_obs_list:
             agent_id = obs_data.id
             state_dict[agent_id] = AgentState(
                 obs_data, self.__ray_tracer, self.__use_depth_map
@@ -690,11 +756,51 @@ class Game:
             agent_cmd = reply.agent_cmd_list.add()
             agent_cmd.id = agent_id
             for action_name, idx in self.__action_idx_map.items():
-                setattr(agent_cmd, action_name, action[idx])
+                a = action[idx]
+                if action_name == ActionVariable.WALK_SPEED:
+                    a = min(a, self.__MAX_WALK_SPEED)
+                setattr(agent_cmd, action_name, a)
 
         self.reply_queue.put(reply)
-        self.latest_reply = reply
-        self.latest_request = self.request_queue.get()
+        self.__update_request()
+        self.__time_step += self.__TIMESTEP_PER_ACTION
+
+    def make_action_by_list(self, action_all: Dict[int, List[Tuple[str, Any]]]):
+        reply = simple_command_pb2.A2S_Reply_Data()
+        reply.game_state = simple_command_pb2.GameState.update
+
+        for agent_id, action_list in action_all.items():
+            agent_cmd = reply.agent_cmd_list.add()
+            agent_cmd.id = agent_id
+            for action_name, value in action_list:
+                setattr(agent_cmd, action_name, value)
+
+        self.reply_queue.put(reply)
+        self.__update_request()
+        self.__time_step += self.__TIMESTEP_PER_ACTION
+
+    def log_movement_trajectory(self):
+        self.__log_trajectory = True
+        self.__points = []
+
+    def log_movement_trajectory_stop(self):
+        self.__log_trajectory = False
+
+    def get_movement_trajectory(self):
+        return self.__points
+
+    def __update_request(self):
+        self.__latest_request = self.request_queue.get()
+        if self.__latest_request.game_state == simple_command_pb2.GameState.over:
+            self.__is_episode_finished = True
+        else:
+            self.__is_episode_finished = False
+            self.__num_supply = self.__latest_request.agent_obs_list[0].num_supply
+        
+        if self.__log_trajectory:
+            pos = vector3d_to_list(self.__latest_request.agent_obs_list[0].location)
+            x, z = pos[0], pos[2]
+            self.__points.append((x, z))
 
     def make_action_by_list(self, action_all: Dict[int, List[Tuple[str, Any]]]):
         reply = simple_command_pb2.A2S_Reply_Data()
@@ -711,15 +817,16 @@ class Game:
         self.latest_request = self.request_queue.get()
 
     def is_episode_finished(self):
-        return self.latest_request.game_state == simple_command_pb2.GameState.over
+        return self.__is_episode_finished
 
     def new_episode(self):
         reply = simple_command_pb2.A2S_Reply_Data()
         reply.game_state = simple_command_pb2.GameState.reset
         reply.gm_cmd.CopyFrom(self.__GM)
         self.reply_queue.put(reply)
-        self.lastest_reply = reply
-        self.latest_request = self.request_queue.get()
+        self.__update_request()
+        self.__time_step = 0
+
         print("Started new episode ...")
 
         # load mesh data
