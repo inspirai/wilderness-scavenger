@@ -346,6 +346,7 @@ class Game:
         self.__server_port = server_port
         self.__time_step = 0
         self.__latest_request = None
+        self.__log_trajectory = False
 
         # initialize default game settings
         self.__GM = self.__get_default_GM()
@@ -439,6 +440,10 @@ class Game:
     @property
     def time_step_per_action(self):
         return self.__TIMESTEP_PER_ACTION
+    
+    @property
+    def frame_rate(self):
+        return self.__FRAME_RATE
 
     def set_game_config(self, config_path: str):
         """
@@ -537,8 +542,6 @@ class Game:
     def set_supply_heatmap_center(self, loc: List[float]):
         """loc: a list of two numbers that represent the x and z values of the center location"""
         assert isinstance(loc, list) and len(loc) == 2
-        assert -150 <= loc[0] <= 150
-        assert -150 <= loc[1] <= 150
         center = [loc[0], 0, loc[1]]
         set_vector3d(self.__GM.supply_heatmap_center, center)
 
@@ -551,7 +554,7 @@ class Game:
         return vector3d_to_list(self.__GM.supply_heatmap_center)
 
     def set_supply_heatmap_radius(self, radius: int):
-        assert isinstance(radius, int) and 1 <= radius <= 200
+        assert isinstance(radius, int) and radius > 0
         self.__GM.supply_heatmap_radius = radius
 
     def get_supply_heatmap_radius(self):
@@ -588,10 +591,8 @@ class Game:
         outdoor_richness: int,
     ):
         assert isinstance(refresh_time, int) and refresh_time >= 1
-        assert isinstance(heatmap_radius, int) and 1 <= heatmap_radius <= 200
+        assert isinstance(heatmap_radius, int) and heatmap_radius > 0
         assert isinstance(heatmap_center, list) and len(heatmap_center) in [2, 3]
-        assert -150 <= heatmap_center[0] <= 150
-        assert -150 <= heatmap_center[1] <= 150
         assert isinstance(indoor_richness, int) and 0 <= indoor_richness <= 100
         assert isinstance(outdoor_richness, int) and 0 <= outdoor_richness <= 50
 
@@ -674,7 +675,6 @@ class Game:
         return self.__GM.trigger_range
 
     def init(self):
-        assert len(self.__available_actions) > 0
         self.request_queue = Queue()
         self.reply_queue = Queue()
 
@@ -765,9 +765,26 @@ class Game:
         self.__update_request()
         self.__time_step += self.__TIMESTEP_PER_ACTION
 
+    def make_action_by_list(self, action_all: Dict[int, List[Tuple[str, Any]]]):
+        reply = simple_command_pb2.A2S_Reply_Data()
+        reply.game_state = simple_command_pb2.GameState.update
+
+        for agent_id, action_list in action_all.items():
+            agent_cmd = reply.agent_cmd_list.add()
+            agent_cmd.id = agent_id
+            for action_name, value in action_list:
+                setattr(agent_cmd, action_name, value)
+
+        self.reply_queue.put(reply)
+        self.__update_request()
+        self.__time_step += self.__TIMESTEP_PER_ACTION
+
     def log_movement_trajectory(self):
         self.__log_trajectory = True
         self.__points = []
+
+    def log_movement_trajectory_stop(self):
+        self.__log_trajectory = False
 
     def get_movement_trajectory(self):
         return self.__points
