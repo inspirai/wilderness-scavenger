@@ -607,6 +607,9 @@ class Game:
         refresh.supply_create_percent = outdoor_richness
         refresh.supply_house_create_percent = indoor_richness
 
+    def clear_supply_refresh(self):
+        del self.__GM.supply_refresh_datas[:]
+
     def add_agent(
         self,
         health=100,

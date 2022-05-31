@@ -25,10 +25,10 @@ SUPPLY_CONFIGS = {
         [-20, 20],
         [-20, -20],
     ],
-    "supply_radius": [50, 75, 100],
+    "supply_radius": [100],
     "supply_richness_outdoor": [10, 20, 30],
     "supply_richness_indoor": [70, 80, 90],
-    "supply_spacing": [5, 10, 15, 20],
+    "supply_spacing": [5],
     "supply_indoor_quantity_range": {
         "qmin": 10,
         "qmax": 50,
@@ -38,10 +38,10 @@ SUPPLY_CONFIGS = {
         "qmax": 5,
     },
     "supply_refresh": {
-        "refresh_time": [300, 600],
-        "heatmap_radius": [30],
-        "indoor_richness": [70, 80, 90],
+        "refresh_time": [600],
+        "heatmap_radius": [30, 50, 70],
         "outdoor_richness": [10, 20, 30],
+        "indoor_richness": [70, 80, 90],
     },
 }
 
@@ -117,9 +117,12 @@ def run_eval(args, eval_id=None):
                 **SUPPLY_CONFIGS["supply_outdoor_quantity_range"]
             )
 
+            game.clear_supply_refresh()
+
             refresh_config_pool = SUPPLY_CONFIGS["supply_refresh"]
             heatmap_centers = []
             heatmap_radius = []
+
             for time in refresh_config_pool["refresh_time"]:
                 center = random.choice(game.get_valid_locations()["indoor"])
                 radius = random.choice(refresh_config_pool["heatmap_radius"])
@@ -139,6 +142,10 @@ def run_eval(args, eval_id=None):
                 heatmap_centers.append(center)
                 heatmap_radius.append(radius)
 
+            print(game.get_game_config())
+
+            # _ = input("Just a break ...")
+            
             game.new_episode()
 
             episode_info = {
@@ -176,8 +183,9 @@ def run_eval(args, eval_id=None):
                     walk_dir = round(action_all[0].walk_dir, 2)
                     curr_loc = [round(x, 2) for x in get_position(state_all[0])]
                     num_supply = state_all[0].num_supply
+                    GameTime = ts // game.frame_rate
                     print(
-                        f"{map_id=}\t{ep=}\t{ts=}\t{curr_loc=}\t{num_supply=}\t{walk_dir=}"
+                        f"{map_id=}\t{ep=}\t{GameTime=}s\t{curr_loc=}\t{num_supply=}\t{walk_dir=}"
                     )
 
             res = game.get_game_result()
