@@ -1,0 +1,5 @@
+# cat requirements.txt 
+ray[rllib]
+protobuf==3.20.0
+opencv-python
+torch
