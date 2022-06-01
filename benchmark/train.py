@@ -55,33 +55,8 @@ if __name__ == "__main__":
                 "env_config": vars(args),
                 "framework": "torch",
                 "num_workers": args.num_workers,
-                "evaluation_interval": args.eval_interval,
-                "model": {
-                    # Auto-wrap the custom(!) model with an LSTM.
-                    "use_lstm": True,
-                    # To further customize the LSTM auto-wrapper.
-                    "lstm_cell_size": 64, },
                 "train_batch_size": args.train_batch_size,  # default of ray is 4000
-                "evaluation_config": {"env_config": eval_cfg},
-                "evaluation_num_workers": 10,
-            }
-        )
-    elif alg == 'appo':
-        trainer = APPOTrainer(
-            config={
-                "env": NavigationEnv,
-                "env_config": vars(args),
-                "framework": "torch",
-                "num_workers": args.num_workers,
-                "evaluation_interval": args.eval_interval,
                 "num_gpus": 0,
-                "model": {
-                    # Auto-wrap the custom(!) model with an LSTM.
-                    "use_lstm": True,
-                    # To further customize the LSTM auto-wrapper.
-                    "lstm_cell_size": 64, },
-                "evaluation_config": {"env_config": eval_cfg},
-                "evaluation_num_workers": 10,
             }
         )
     elif alg == 'a3c':
@@ -91,11 +66,9 @@ if __name__ == "__main__":
                 "env_config": vars(args),
                 "framework": "torch",
                 "num_workers": args.num_workers,
-                # "evaluation_interval": args.eval_interval,
                 "num_gpus": 0,
                 "train_batch_size": args.train_batch_size,  # default of ray is 4000
-                # "evaluation_config": {"env_config": eval_cfg,"explore":True,},
-                # "evaluation_num_workers": 10,
+
             }
         )
     elif alg == 'impala':
@@ -105,15 +78,8 @@ if __name__ == "__main__":
                 "env_config": vars(args),
                 "framework": "torch",
                 "num_workers": args.num_workers,
-                "evaluation_interval": args.eval_interval,
                 "num_gpus": 0,
-                "model": {
-                    # Auto-wrap the custom(!) model with an LSTM.
-                    "use_lstm": True,
-                    # To further customize the LSTM auto-wrapper.
-                    "lstm_cell_size": 64, },
-                "evaluation_config": {"env_config": eval_cfg},
-                "evaluation_num_workers": 10,
+                "train_batch_size": args.train_batch_size,  # default of ray is 4000
             }
         )
     else:
@@ -127,13 +93,15 @@ if __name__ == "__main__":
         result = trainer.train()
         reward = result["episode_reward_mean"]
         e = result["episodes_total"]
-        print(f"current_training_steps:{step},episodes_total:{e},current_alg:{alg},current_reward:{reward}")
+        len1 = result["episode_len_mean"]
+        s = result["agent_timesteps_total"]
+        print(f"current_alg:{alg},current_training_steps:{s},episodes_total:{e},current_reward:{reward},current_len:{len1}")
 
         if step != 0 and step % 200 == 0:
             os.makedirs(args.checkpoint_dir + f"{alg}" + str(args.map_id), exist_ok=True)
             trainer.save(args.checkpoint_dir + f"{alg}" + str(args.map_id))
             print("trainer save a checkpoint")
-        if result["episodes_total"] >= args.stop_episodes:
+        if result["current_alg:{alg},"] >= args.stop_timesteps:
             os.makedirs(args.checkpoint_dir + f"{alg}" + str(args.map_id), exist_ok=True)
             trainer.save(args.checkpoint_dir + f"{alg}" + str(args.map_id))
             trainer.stop()

@@ -813,7 +813,7 @@ class Game:
         self.__update_request()
         self.__time_step = 0
 
-        print("Started new episode ...")
+        # print("Started new episode ...")
 
         # load mesh data
         mesh_name = f"{self.__GM.map_id:03d}.obj"
@@ -823,9 +823,9 @@ class Game:
             # release raytracer resources
             del self.__ray_tracer
             self.__ray_tracer = RaycastManager(mesh_file_path)
-            print("[change] Loaded map mesh from {}".format(mesh_file_path))
-        else:
-            print("[keep] Reused map mesh from {}".format(mesh_file_path))
+        #     print("[change] Loaded map mesh from {}".format(mesh_file_path))
+        # else:
+        #     print("[keep] Reused map mesh from {}".format(mesh_file_path))
 
         # setup depth map size
         self.__ray_tracer.WIDTH = self.dmp_width
