@@ -57,6 +57,7 @@ if __name__ == "__main__":
                 "num_workers": args.num_workers,
                 "train_batch_size": args.train_batch_size,  # default of ray is 4000
                 "num_gpus": 0,
+                "ignore_worker_failures":True,
             }
         )
     elif alg == 'a3c':
@@ -68,6 +69,7 @@ if __name__ == "__main__":
                 "num_workers": args.num_workers,
                 "num_gpus": 0,
                 "train_batch_size": args.train_batch_size,  # default of ray is 4000
+                "ignore_worker_failures":True,
 
             }
         )
@@ -80,6 +82,7 @@ if __name__ == "__main__":
                 "num_workers": args.num_workers,
                 "num_gpus": 0,
                 "train_batch_size": args.train_batch_size,  # default of ray is 4000
+                "ignore_worker_failures":True,
             }
         )
     else:
