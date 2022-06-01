@@ -3,11 +3,8 @@ FROM python:latest
 WORKDIR /tmp/install
 
 RUN curl -o master.zip https://codeload.github.com/inspirai/wilderness-scavenger/zip/refs/heads/master
-RUN unzip master.zip
 RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
-RUN pip install -U pip
-RUN pip install requests
-RUN pip install wilderness-scavenger-master/.
+RUN pip install -U pip && pip install master.zip
 
 # add your additional python denpendencies in the requirements.txt file
 COPY requirements.txt requirements.txt

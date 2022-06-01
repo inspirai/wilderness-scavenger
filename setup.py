@@ -23,7 +23,7 @@ setup(
     packages=["inspirai_fps"],
     python_requires=">=3.8, <4",
     package_data={"inspirai_fps": package_data},
-    install_requires=["Pillow", "numpy", "grpcio", "rich", "protobuf", "trimesh"],
+    install_requires=["requests", "Pillow", "numpy", "grpcio", "rich", "protobuf", "trimesh"],
     extras_require={"baseline": ["gym", "ray[rllib]", "torch"]},
     keywords=[
         "inspirai",
