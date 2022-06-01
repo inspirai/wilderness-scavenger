@@ -351,7 +351,13 @@ if __name__ == "__main__":
     from ray.tune.logger import pretty_print
     # from envs.envs_track2 import SupplyGatherDiscreteSingleTarget
     from ray.rllib.agents.impala import ImpalaTrainer
-
+    from ray.rllib.agents.ppo import PPOTrainer
+    from ray.rllib.agents.a3c import A3CTrainer
+    # from ray.rllib.agents.sac import SACTrainer
+    from ray.rllib.agents.impala import ImpalaTrainer
+    # from ray.rllib.agents.ddpg import DDPGTrainer
+    # from ray.rllib.agents.dqn.apex import ApexTrainer
+    from ray.rllib.agents.ppo.appo import APPOTrainer
     args = parser.parse_args()
     # env = SupplyBattleMultiAgentEnv(vars(args))
     # state = env.reset()
@@ -360,31 +366,95 @@ if __name__ == "__main__":
 
 
     ray.init()
-    agent = ImpalaTrainer(
-        config={
-            "env": SupplyBattleMultiAgentEnv,
-            "env_config": vars(args),
-            "framework": "torch",
-            "num_workers": args.num_workers,
-            "evaluation_interval": args.eval_interval,
-            "num_gpus": 0,
+    eval_cfg = vars(args).copy()
+    eval_cfg["in_evaluation"] = True
 
-        }
-    )
+    alg = args.run
+    if alg == 'ppo':
+        trainer = PPOTrainer(
+            config={
+                "env": SupplyBattleMultiAgentEnv,
+                "env_config": vars(args),
+                "framework": "torch",
+                "num_workers": args.num_workers,
+                "evaluation_interval": args.eval_interval,
+                "model": {
+                    # Auto-wrap the custom(!) model with an LSTM.
+                    "use_lstm": True,
+                    # To further customize the LSTM auto-wrapper.
+                    "lstm_cell_size": 64, },
+                "train_batch_size": args.train_batch_size,  # default of ray is 4000
+                "evaluation_config": {"env_config": eval_cfg},
+                "evaluation_num_workers": 10,
+            }
+        )
+    elif alg == 'appo':
+        trainer = APPOTrainer(
+            config={
+                "env": SupplyBattleMultiAgentEnv,
+                "env_config": vars(args),
+                "framework": "torch",
+                "num_workers": args.num_workers,
+                "evaluation_interval": args.eval_interval,
+                "num_gpus": 0,
+                "model": {
+                    # Auto-wrap the custom(!) model with an LSTM.
+                    "use_lstm": True,
+                    # To further customize the LSTM auto-wrapper.
+                    "lstm_cell_size": 64, },
+                "evaluation_config": {"env_config": eval_cfg},
+                "evaluation_num_workers": 10,
+            }
+        )
+    elif alg == 'a3c':
+        trainer = A3CTrainer(
+            config={
+                "env": SupplyBattleMultiAgentEnv,
+                "env_config": vars(args),
+                "framework": "torch",
+                "num_workers": args.num_workers,
+                "evaluation_interval": args.eval_interval,
+                "num_gpus": 0,
+                "evaluation_config": {"env_config": eval_cfg,"explore":True,},
+                "evaluation_num_workers": 10,
+            }
+        )
+    
+    elif alg == 'impala':
+        trainer = ImpalaTrainer(
+            config={
+                "env": SupplyBattleMultiAgentEnv,
+                "env_config": vars(args),
+                "framework": "torch",
+                "num_workers": args.num_workers,
+                "evaluation_interval": args.eval_interval,
+                "num_gpus": 0,
+                "model": {
+                    # Auto-wrap the custom(!) model with an LSTM.
+                    "use_lstm": False,
+                    # To further customize the LSTM auto-wrapper.
+                    "lstm_cell_size": 64, },
+                "evaluation_config": {"env_config": eval_cfg},
+                "evaluation_num_workers": 10,
+            }
+        )
+
+
     step = 0
     while True:
-        result = agent.train()
+        result = trainer.train()
         print(pretty_print(result))
         if step !=0 and step %300==0:
             os.makedirs(args.checkpoint_dir, exist_ok=True)
-            agent.save_checkpoint(args.checkpoint_dir)
+            trainer.save_checkpoint(args.checkpoint_dir)
         step+=1
         if result["episodes_total"] >= args.stop_episodes:
             # agent.save_checkpoint(args.checkpoint_path)
             os.makedirs(args.checkpoint_dir, exist_ok=True)
-            agent.save_checkpoint(args.checkpoint_dir)
-            agent.stop()
+            trainer.save_checkpoint(args.checkpoint_dir)
+            trainer.stop()
             break
     print('training is done-----------------over')
     ray.shutdown()
     sys.exit()
+
