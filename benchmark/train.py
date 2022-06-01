@@ -10,7 +10,7 @@ parser.add_argument("-S", "--random-seed", type=int, default=0)
 parser.add_argument("--start-location", type=float, nargs=3, default=[0, 0, 0])
 parser.add_argument("--target-location", type=float, nargs=3, default=[0, 0, 0])
 parser.add_argument("--base-worker-port", type=int, default=50000)
-parser.add_argument("--engine-dir", type=str, default="../wildscav-linux-backend")
+parser.add_argument("--engine-dir", type=str, default="../wildscav-linux-backend-v1.0-benchmark")
 parser.add_argument("--map-dir", type=str, default="../101_104")
 parser.add_argument("--num-workers", type=int, default=10)
 parser.add_argument("--eval-interval", type=int, default=None)
@@ -104,7 +104,7 @@ if __name__ == "__main__":
             os.makedirs(args.checkpoint_dir + f"{alg}" + str(args.map_id), exist_ok=True)
             trainer.save(args.checkpoint_dir + f"{alg}" + str(args.map_id))
             print("trainer save a checkpoint")
-        if result["current_alg:{alg},"] >= args.stop_timesteps:
+        if result["agent_timesteps_total"] >= args.stop_timesteps:
             os.makedirs(args.checkpoint_dir + f"{alg}" + str(args.map_id), exist_ok=True)
             trainer.save(args.checkpoint_dir + f"{alg}" + str(args.map_id))
             trainer.stop()

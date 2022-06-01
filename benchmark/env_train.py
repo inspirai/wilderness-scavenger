@@ -177,7 +177,7 @@ class NavigationEnv(gym.Env):
 
     def reset(self):
 
-        print("Reset for a new game ...")
+        # print("Reset for a new game ...")
 
         # if self.episodes <= 500:
         #     self.start_loc = random.choice(self.loc_20)
