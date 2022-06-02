@@ -321,23 +321,12 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
         if not self.game.is_episode_finished():
             if self.target_supply[agent_id] is None:
                 return reward
-            distance = get_distance([self.target_supply[agent_id][0], self.target_supply[agent_id][1],
-                                    self.target_supply[agent_id][2]],get_position(state))
-            reward += -distance
 
             if get_distance([self.target_supply[agent_id][0], self.target_supply[agent_id][1],
                                     self.target_supply[agent_id][2]],get_position(state))<=1:
                 self.target_supply[agent_id]=None
                 reward +=100
-                reward += (state.num_supply - self.collected_supplys[agent_id])*10
 
-
-
-                reward -=50
-            # if state.hit_enemy:
-            #     reward+=100
-            # if state.hit_by_enemy:
-            #     reward-=100
 
 
         return reward
