@@ -53,9 +53,9 @@ class SupplyGatherBaseEnv(gym.Env):
             ActionVariable.PICKUP,
         ]
 
-        self.WALK_DIR_LIST = [0, 45, 90, 135, 180, 225, 270, 315]
-        self.WALK_SPEED_LIST = [3, 6, 9]  # [3, 6, 9] # [0, 1, 2]
-        self.PICKUP_LIST = [True, False]
+        self.WALK_DIR_LIST = [0, 90, 180, 270]
+        self.WALK_SPEED_LIST = [0, 8]  # [3, 6, 9] # [0, 1, 2]
+        self.PICKUP_LIST = [True]
 
         self.action_space = MultiDiscrete(
             [
@@ -84,7 +84,7 @@ class SupplyGatherBaseEnv(gym.Env):
         self.game.set_supply_outdoor_richness(2)  # 10
         self.game.set_supply_indoor_quantity_range(10, 20)
         self.game.set_supply_outdoor_quantity_range(1, 5)
-        self.game.set_supply_spacing(1)
+        self.game.set_supply_spacing(2)
 
         self.is_inference = env_config.get("inference", False)
         self.turn_on_detailed_log = env_config["detailed_log"]
@@ -184,15 +184,6 @@ class SupplyGatherBaseEnv(gym.Env):
         _other_process = getattr(self, "_other_process")
         done = _other_process(done)
 
-        if done:
-            with open(self.log_path + "log.txt", "a") as f:
-                f.write(f"\nepisode总共走了这么多步：{self.running_steps}\n")
-                f.write(f"捡到的supply总量：{self.collected_supply}\n")
-                f.write(f"总奖励：{self.episode_reward}\n")
-                f.write(f"有效supply总量：{self.valid_collected_supply}\n")
-
-            if self.is_inference:
-                self.game.close()
 
         return self.curr_obs, reward, done, {}
 
@@ -282,31 +273,27 @@ class SupplyGatherDiscreteSingleTarget(SupplyGatherBaseEnv):
             return reward
         if not self.game.is_episode_finished():
             # movement punishment
-            reward -= 1
-
-            # punish for taking PICKUP but with no increase in #supply
-            if action_cmd[0][2] == True and state.num_supply == self.collected_supply:
-                reward -= 50
+            # reward -= 1
 
             # punish for moving away from supply and award for moving towards supply
             self.cur_distance = get_distance(
                 [self.target_supply[0], self.target_supply[1], self.target_supply[2]],
                 get_position(state),
             )
-            reward += (self.target_supply_radius - self.cur_distance) * 5
+            # reward += (self.target_supply_radius - self.cur_distance) * 5
 
             # reaching the initial goal (supply heatmap center)
             if self.valid_collected_supply == 0 and self.cur_distance <= self.target_supply_radius:
-                reward += 300
+                reward += 1
                 self.target_supply = None
                 self.valid_collected_supply += 1
                 self.target_supply_radius = 4  # 第一个目标完成，修改物资半径为2
 
             # reaching the second goal (successfully collect supplies)
             if state.num_supply > self.collected_supply and self.cur_distance <= 1:
-                reward += 300
+                # reward += 300
                 self.target_supply = None
-                self.valid_collected_supply += state.num_supply - self.collected_supply
+                self.valid_collected_supply += 1
 
             self.collected_supply = state.num_supply
 
@@ -323,7 +310,7 @@ class SupplyGatherDiscreteSingleTarget(SupplyGatherBaseEnv):
                     supply.quantity,
                 ]
             )
-            for supply in state.supply_states
+            for supply in state.supply_states.values()
         ]
 
         # reinitialize: get target information

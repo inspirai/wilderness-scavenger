@@ -4,14 +4,14 @@ parser = argparse.ArgumentParser()
 
 # game setup
 parser.add_argument("--timeout", type=int, default=60 * 2)  # The time length of one game (sec)
-parser.add_argument("--time-scale", type=int, default=1)  # speedup factor
+parser.add_argument("--time-scale", type=int, default=10)  # speedup factor
 parser.add_argument("--random-seed", type=int, default=0)
 parser.add_argument("--detailed-log", action="store_true", help="whether to print detailed logs")
 parser.add_argument("--heatmap-center", type=float, nargs=3, default=[8, 8])  # the center of the supply heatmap (x, z are the 2D location and y is the height)
 parser.add_argument("--start-range", type=float, default=1)  # the range of the start location
 parser.add_argument("--start-hight", type=float, default=5)  # the height of the start location
-parser.add_argument("--engine-dir", type=str, default="../unity3d")  # path to unity executable
-parser.add_argument("--map-dir", type=str, default="../data")  # path to map files
+parser.add_argument("--engine-dir", type=str, default="../wildscav-linux-backend")  # path to unity executable
+parser.add_argument("--map-dir", type=str, default="../map_data")  # path to map files
 parser.add_argument("--map-id", type=int, default=1)  # id of the map
 parser.add_argument("--use-depth-map", action="store_true")  # whether to use depth map
 parser.add_argument("--resume", action="store_true")  # whether to resume training from a checkpoint
@@ -28,8 +28,8 @@ parser.add_argument("--run", type=str, default="PPO", help="The RLlib-registered
 parser.add_argument("--stop-iters", type=int, default=9999)
 parser.add_argument("--stop-timesteps", type=int, default=100000000)
 parser.add_argument("--stop-reward", type=float, default=999999)
-parser.add_argument("--stop-episodes", type=float, default=20)
-parser.add_argument("--train-batch-size", type=int, default=400)
+parser.add_argument("--stop-episodes", type=float, default=100000)
+parser.add_argument("--train-batch-size", type=int, default=800)
 
 
 if __name__ == "__main__":
