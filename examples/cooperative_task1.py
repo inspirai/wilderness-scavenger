@@ -312,6 +312,7 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
 
 
 
+
     def _compute_reward(self, state, agent_id):
         '''
         奖励设计，（1）当前位置和目标位置的距离（2）装弹的负奖励（3）打到敌人正奖励（4）被敌人打到负奖励
@@ -321,16 +322,23 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
         if not self.game.is_episode_finished():
             if self.target_supply[agent_id] is None:
                 return reward
-
+            distance = get_distance([self.target_supply[agent_id][0], self.target_supply[agent_id][1],
+                                    self.target_supply[agent_id][2]],get_position(state))
+            reward += -distance
             if get_distance([self.target_supply[agent_id][0], self.target_supply[agent_id][1],
                                     self.target_supply[agent_id][2]],get_position(state))<=1:
                 self.target_supply[agent_id]=None
                 reward +=100
+                reward += (state.num_supply - self.collected_supplys[agent_id])*10
 
+
+            # if state.hit_enemy:
+            #     reward+=100
+            # if state.hit_by_enemy:
+            #     reward-=100
 
 
         return reward
-
 
 
     def _action_process(self, action):
