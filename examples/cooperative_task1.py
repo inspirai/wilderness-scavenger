@@ -325,11 +325,15 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
             distance = get_distance([self.target_supply[agent_id][0], self.target_supply[agent_id][1],
                                     self.target_supply[agent_id][2]],get_position(state))
             reward += -distance
+            reward +=(state.num_supply - self.collected_supplys[agent_id])*10
+            collec_suply=self.collected_supplys[agent_id]
+            print('collected supply',collec_suply)
+
             if get_distance([self.target_supply[agent_id][0], self.target_supply[agent_id][1],
                                     self.target_supply[agent_id][2]],get_position(state))<=1:
                 self.target_supply[agent_id]=None
                 reward +=100
-                reward += (state.num_supply - self.collected_supplys[agent_id])*10
+                # reward += (state.num_supply - self.collected_supplys[agent_id])*10
 
 
             # if state.hit_enemy:
