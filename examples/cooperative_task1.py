@@ -43,6 +43,9 @@ parser.add_argument("--record", action="store_true", help="whether to record the
 parser.add_argument("--replay-suffix", type=str, default="", help="suffix of the replay filename")
 parser.add_argument("--inference", action="store_true", help="whether to run inference")
 parser.add_argument("--game_config", default='mode3.json')
+parser.add_argument("--dmp-width", type=int, default=42)
+parser.add_argument("--dmp-height", type=int, default=42)
+parser.add_argument("--dmp-far", type=int, default=200)
 
 # training config
 parser.add_argument("--num-workers", type=int, default=0)
@@ -80,7 +83,7 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
         self.game.set_map_id(env_config["map_id"])
         self.game.set_episode_timeout(env_config["timeout"])
         self.game.set_random_seed(env_config["random_seed"])
-        self.game.set_supply_spacing(4)
+        self.game.set_supply_spacing(2)
         game_config = self.game.get_game_config()
         self.supply_heatmap_center = config['heatmap_center']
         self.args = config
@@ -106,12 +109,16 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
         list_spaces = [
                 spaces.Box(-np.Inf, np.Inf, (3,), dtype=np.float32),
                 spaces.Box(-np.Inf, np.Inf, (3,), dtype=np.float32),
-                spaces.Box(-np.Inf, np.Inf, (3,5), dtype=np.float32),
+                spaces.Box(-np.Inf, np.Inf, (3,3), dtype=np.float32),
             ]
-        if env_config["use_depth"]:
-            self.game.turn_on_depth_map()
-            width , height , max_depth = self.game.get_depth_map_size()
-            list_spaces.append(spaces.Box(0, max_depth, (height, width), dtype=np.float32))
+
+        self.game.turn_on_depth_map()
+        dmp_width = config["dmp_width"]
+        dmp_height = config["dmp_height"]
+        dmp_far = config["dmp_far"]
+        self.game.set_depth_map_size(dmp_width, dmp_height, far=dmp_far)
+        
+        list_spaces.append(spaces.Box(0, dmp_far, (dmp_height, dmp_width), dtype=np.float32))
         self.observation_space = spaces.Tuple(list_spaces)
 
 
@@ -139,12 +146,6 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
         self.hit_num = 0
         self.reload = 0
         self.hitted_num = 0
-        # hp
-        # dead
-        # ammo
-        # hit
-        # reload
-        # hitted
         self.agent_hp = 0
         self.weapon_ammo = 0
         self.episode_supply_num = 0
@@ -170,23 +171,7 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
 
         for agent_id in action_dict:
 
-            state = self.game.get_state(agent_id)
-            self.agent_hp+=state.health/100.
-            
-           
-            if state.health<=0 and self.state_dict[agent_id].health>0:
-                self.agent_dead+=1
-            self.weapon_ammo+=(state.weapon_ammo+state.spare_ammo)/75.
-            if state.hit_enemy:
-                self.hit_num+=1
-            if state.hit_by_enemy:
-                self.hitted_num+=1
-            
-            if state.is_reload and not self.state_dict[agent_id].is_reload:
-                self.reload+=1
-            
-                
-
+            state = self.game.get_state(agent_id)   
 
             self.state_dict[agent_id] = state
             reward_dict[agent_id] = self._compute_reward(state, agent_id)
@@ -203,15 +188,6 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
 
             self.writer.add_scalar('episode_supply_num',self.episode_supply_num/len(self.agent_ids),global_step=self.time_steps)
             
-
-            # self.writer.add_scalar('hp',self.agent_hp/len(self.agent_ids),global_step=self.time_steps)
-            # self.writer.add_scalar('dead_num',self.agent_dead/len(self.agent_ids),global_step=self.time_steps)
-            # self.writer.add_scalar('weapon_ammo_num', self.weapon_ammo/len(self.agent_ids), global_step=self.time_steps)
-            # self.writer.add_scalar('hit_num', self.hit_num/len(self.agent_ids), global_step=self.time_steps)
-            # self.writer.add_scalar('reload_num', self.reload/len(self.agent_ids), global_step=self.time_steps)
-            # self.writer.add_scalar('hitted_num', self.hitted_num/len(self.agent_ids), global_step=self.time_steps)
-
-
 
 
         return obs_dict, reward_dict, done_dict, info_dict
@@ -241,14 +217,11 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
                     enemy.position_x,
                     enemy.position_y,
                     enemy.position_z,
-                    enemy.health/100.,
-                    1 if enemy.is_invincible else 0,
-
                 ]
             for enemy in state.enemy_states.values()]
         # enemy_distance = [get_distance([enemy[0],enemy[1],enemy[2]], get_position(state)) for enemy in self.np_enemy_states]
 
-        enemy_states = [[0 for _ in range(5)] for _ in range(3)]
+        enemy_states = [[0 for _ in range(3)] for _ in range(3)]
 
         self.np_enemy_states.sort(key= lambda x:get_distance([x[0],x[1],x[2]], get_position(state)))
         for i in range(len(self.np_enemy_states)):
@@ -258,14 +231,11 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
 
 
         self.np_supply_states = [
-                np.asarray(
                     [
                         supply.position_x,
                         supply.position_y,
                         supply.position_z,
-                        supply.id,
                     ]
-                )
                 for supply in state.supply_states.values()
             ]
 
@@ -274,40 +244,24 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
         supply_distances = [get_distance([supply[0], supply[1], supply[2]], get_position(state)) for supply in
                             self.np_supply_states]
         # target supply is the closest supply
-  
+        if self.target_supply[agent_id] is not None and self.target_supply[agent_id] !=self.supply_heatmap_center:
+            if self.target_supply[agent_id] not in self.np_supply_states:
+                self.target_supply[agent_id] = None
             
         if self.target_supply[agent_id] is None:
             if len(supply_distances) >0:
-                self.target_supply[agent_id] = self.np_supply_states[supply_distances.index(min(supply_distances))].tolist()
-                target =self.target_supply[agent_id][:-1]
+                self.target_supply[agent_id] = self.np_supply_states[supply_distances.index(min(supply_distances))]
+                target =self.target_supply[agent_id]
             else:
                 self.target_supply[agent_id] = self.supply_heatmap_center
                 target = self.target_supply[agent_id]
-           
-        
-
-        
 
         x = state.position_x
         y = state.position_y
         z = state.position_z
-        # move_x = state.move_dir_x
-        # move_y = state.move_dir_y
-        # move_z = state.move_dir_z
-        # move_speed = state.move_speed/10.
-        # pitch = state.pitch/90.
-        # yaw = state.yaw/180.
+        obs = [[x,y,z],target[0:3],enemy_states,state.depth_map.tolist()]
 
-
-        # obs = [[x,y,z,move_x,move_y,move_z,move_speed],
-        #        [pitch,yaw,state.weapon_ammo/15.,state.spare_ammo/60.],
-        #        target,enemy_states]
-        obs = [[x,y,z],target[0:3],enemy_states]
-        if self.args["use_depth"]:
-            map = np.array(state.depth_map.tolist())/100.
-            
-            obs.append(map.tolist())
-        if self.running_steps <=5:
+        if self.running_steps <=4:
             self.target_supply[agent_id]=None
         return obs
 
@@ -315,33 +269,15 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
 
 
     def _compute_reward(self, state, agent_id):
-        '''
-        奖励设计，（1）当前位置和目标位置的距离（2）装弹的负奖励（3）打到敌人正奖励（4）被敌人打到负奖励
-        （5）捡到物资正奖励
-        '''
         reward = 0
         if not self.game.is_episode_finished():
             if self.target_supply[agent_id] is None:
                 return reward
-            #distance = get_distance([self.target_supply[agent_id][0], self.target_supply[agent_id][1],
-            #                       self.target_supply[agent_id][2]],get_position(state))
-            #reward += -distance
-            #reward +=(state.num_supply - self.collected_supplys[agent_id])*10
-            #collec_suply=self.collected_supplys[agent_id]
-            #print('collected supply',collec_suply)
 
             if get_distance([self.target_supply[agent_id][0], self.target_supply[agent_id][1],
                                     self.target_supply[agent_id][2]],get_position(state))<=1:
                 self.target_supply[agent_id]=None
                 reward +=10
-                # reward += (state.num_supply - self.collected_supplys[agent_id])*10
-
-
-            #if state.hit_enemy:
-            #    reward+=20
-            #if state.hit_by_enemy:
-            #    reward-=20
-
 
         return reward
 
@@ -382,9 +318,9 @@ if __name__ == "__main__":
             config={
                 "env": SupplyBattleMultiAgentEnv,
                 "env_config": vars(args),
-                "framework": "torch",
                 "num_workers": args.num_workers,
                 "train_batch_size": args.train_batch_size,  # default of ray is 4000
+                "ignore_worker_failures":True,
             }
         )
     elif alg == 'appo':
@@ -392,9 +328,10 @@ if __name__ == "__main__":
             config={
                 "env": SupplyBattleMultiAgentEnv,
                 "env_config": vars(args),
-                "framework": "torch",
                 "num_workers": args.num_workers,
                 "num_gpus": 0,
+                "train_batch_size": args.train_batch_size,  # default of ray is 4000
+                "ignore_worker_failures":True,
             }
         )
     elif alg == 'a3c':
@@ -405,6 +342,8 @@ if __name__ == "__main__":
                 "framework": "torch",
                 "num_workers": args.num_workers,
                 "num_gpus": 0,
+                "train_batch_size": args.train_batch_size,  # default of ray is 4000
+                "ignore_worker_failures":True,
             }
         )
     
@@ -413,9 +352,10 @@ if __name__ == "__main__":
             config={
                 "env": SupplyBattleMultiAgentEnv,
                 "env_config": vars(args),
-                "framework": "torch",
                 "num_workers": args.num_workers,
                 "num_gpus": 0,
+                "train_batch_size": args.train_batch_size,  # default of ray is 4000
+                "ignore_worker_failures":True,
             }
         )
 
@@ -423,7 +363,11 @@ if __name__ == "__main__":
     step = 0
     while True:
         result = trainer.train()
-        print(pretty_print(result))
+        reward = result["episode_reward_mean"]
+        e = result["episodes_total"]
+        len1 = result["episode_len_mean"]
+        s = result["agent_timesteps_total"]
+        print(f"current_alg:{alg},current_training_steps:{s},train_total:{step},current_reward:{reward},current_len:{len1}")
         if step !=0 and step %300==0:
             os.makedirs(args.checkpoint_dir, exist_ok=True)
             trainer.save_checkpoint(args.checkpoint_dir)
