@@ -336,10 +336,10 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
                 # reward += (state.num_supply - self.collected_supplys[agent_id])*10
 
 
-            # if state.hit_enemy:
-            #     reward+=100
-            # if state.hit_by_enemy:
-            #     reward-=100
+            if state.hit_enemy:
+                reward+=20
+            if state.hit_by_enemy:
+                reward-=20
 
 
         return reward
