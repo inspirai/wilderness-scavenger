@@ -51,7 +51,7 @@ parser.add_argument("--run", type=str, default="PPO", help="The RLlib-registered
 parser.add_argument("--stop_episodes", type=int, default=100000000)
 parser.add_argument("--stop-timesteps", type=int, default=100000000)
 parser.add_argument("--stop-reward", type=float, default=999999)
-parser.add_argument("--train-batch-size", type=int, default=800)
+parser.add_argument("--train-batch-size", type=int, default=2000)
 
 
 
@@ -93,11 +93,11 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
             self.game.set_game_replay_suffix(config["replay_suffix"])
 
         self.action_pools = {
-            ActionVariable.WALK_DIR: [0, 45, 90, 135, 180, 225, 270, 315],
-            ActionVariable.WALK_SPEED: [0, 4, 8],
+            ActionVariable.WALK_DIR: [0, 90, 180, 270],
+            ActionVariable.WALK_SPEED: [0, 6],
             ActionVariable.TURN_LR_DELTA: [-1, -0.5, 0, 0.5, 1],
-            ActionVariable.LOOK_UD_DELTA: [-1, 0, 1],
-            ActionVariable.JUMP: [True, False],
+            # ActionVariable.LOOK_UD_DELTA: [-1, 0, 1],
+            # ActionVariable.JUMP: [True, False],
             ActionVariable.PICKUP: [True],
         }
         self.action_space = spaces.MultiDiscrete([len(pool) for pool in self.action_pools.values()])
@@ -274,8 +274,8 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
         supply_distances = [get_distance([supply[0], supply[1], supply[2]], get_position(state)) for supply in
                             self.np_supply_states]
         # target supply is the closest supply
-      
-
+  
+            
         if self.target_supply[agent_id] is None:
             if len(supply_distances) >0:
                 self.target_supply[agent_id] = self.np_supply_states[supply_distances.index(min(supply_distances))].tolist()
@@ -283,6 +283,7 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
             else:
                 self.target_supply[agent_id] = self.supply_heatmap_center
                 target = self.target_supply[agent_id]
+           
         
 
         
@@ -301,7 +302,7 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
         # obs = [[x,y,z,move_x,move_y,move_z,move_speed],
         #        [pitch,yaw,state.weapon_ammo/15.,state.spare_ammo/60.],
         #        target,enemy_states]
-        obs = [[x,y,z],target[0:3],enemy_states[0:3]]
+        obs = [[x,y,z],target[0:3],enemy_states]
         if self.args["use_depth"]:
             map = np.array(state.depth_map.tolist())/100.
             
@@ -322,24 +323,24 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
         if not self.game.is_episode_finished():
             if self.target_supply[agent_id] is None:
                 return reward
-            distance = get_distance([self.target_supply[agent_id][0], self.target_supply[agent_id][1],
-                                    self.target_supply[agent_id][2]],get_position(state))
-            reward += -distance
-            reward +=(state.num_supply - self.collected_supplys[agent_id])*10
-            collec_suply=self.collected_supplys[agent_id]
-            print('collected supply',collec_suply)
+            #distance = get_distance([self.target_supply[agent_id][0], self.target_supply[agent_id][1],
+            #                       self.target_supply[agent_id][2]],get_position(state))
+            #reward += -distance
+            #reward +=(state.num_supply - self.collected_supplys[agent_id])*10
+            #collec_suply=self.collected_supplys[agent_id]
+            #print('collected supply',collec_suply)
 
             if get_distance([self.target_supply[agent_id][0], self.target_supply[agent_id][1],
                                     self.target_supply[agent_id][2]],get_position(state))<=1:
                 self.target_supply[agent_id]=None
-                reward +=100
+                reward +=10
                 # reward += (state.num_supply - self.collected_supplys[agent_id])*10
 
 
-            if state.hit_enemy:
-                reward+=20
-            if state.hit_by_enemy:
-                reward-=20
+            #if state.hit_enemy:
+            #    reward+=20
+            #if state.hit_by_enemy:
+            #    reward-=20
 
 
         return reward
@@ -383,15 +384,7 @@ if __name__ == "__main__":
                 "env_config": vars(args),
                 "framework": "torch",
                 "num_workers": args.num_workers,
-                "evaluation_interval": args.eval_interval,
-                "model": {
-                    # Auto-wrap the custom(!) model with an LSTM.
-                    "use_lstm": True,
-                    # To further customize the LSTM auto-wrapper.
-                    "lstm_cell_size": 64, },
                 "train_batch_size": args.train_batch_size,  # default of ray is 4000
-                "evaluation_config": {"env_config": eval_cfg},
-                "evaluation_num_workers": 10,
             }
         )
     elif alg == 'appo':
@@ -401,15 +394,7 @@ if __name__ == "__main__":
                 "env_config": vars(args),
                 "framework": "torch",
                 "num_workers": args.num_workers,
-                "evaluation_interval": args.eval_interval,
                 "num_gpus": 0,
-                "model": {
-                    # Auto-wrap the custom(!) model with an LSTM.
-                    "use_lstm": True,
-                    # To further customize the LSTM auto-wrapper.
-                    "lstm_cell_size": 64, },
-                "evaluation_config": {"env_config": eval_cfg},
-                "evaluation_num_workers": 10,
             }
         )
     elif alg == 'a3c':
@@ -419,10 +404,7 @@ if __name__ == "__main__":
                 "env_config": vars(args),
                 "framework": "torch",
                 "num_workers": args.num_workers,
-                "evaluation_interval": args.eval_interval,
                 "num_gpus": 0,
-                "evaluation_config": {"env_config": eval_cfg,"explore":True,},
-                "evaluation_num_workers": 10,
             }
         )
     
@@ -433,15 +415,7 @@ if __name__ == "__main__":
                 "env_config": vars(args),
                 "framework": "torch",
                 "num_workers": args.num_workers,
-                "evaluation_interval": args.eval_interval,
                 "num_gpus": 0,
-                "model": {
-                    # Auto-wrap the custom(!) model with an LSTM.
-                    "use_lstm": False,
-                    # To further customize the LSTM auto-wrapper.
-                    "lstm_cell_size": 64, },
-                "evaluation_config": {"env_config": eval_cfg},
-                "evaluation_num_workers": 10,
             }
         )
 
