@@ -226,7 +226,7 @@ class NavigationEnv(MultiAgentEnv):
         cur_pos = get_position(state)
         tar_pos = self.target_location
         # reward = -get_distance(cur_pos, tar_pos)
-        reward = 0
+        reward = -1
         reward += get_distance(get_position(self.state_dict[agent_id]),tar_pos)-get_distance(cur_pos,tar_pos)
         if get_distance(cur_pos, tar_pos) <= 1:
             reward += 100
