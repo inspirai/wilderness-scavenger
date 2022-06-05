@@ -46,6 +46,7 @@ parser.add_argument("--game_config", default='mode3.json')
 parser.add_argument("--dmp-width", type=int, default=42)
 parser.add_argument("--dmp-height", type=int, default=42)
 parser.add_argument("--dmp-far", type=int, default=200)
+parser.add_argument("--base-worker-port", type=int, default=50000)
 
 # training config
 parser.add_argument("--num-workers", type=int, default=0)
@@ -64,7 +65,9 @@ class SupplyBattleMultiAgentEnv(MultiAgentEnv):
 
 
         self.seed(config["random_seed"])
-        self.server_port = BASE_WORKER_PORT + config.worker_index
+        self.server_port = (
+                config.get("base_worker_port", BASE_WORKER_PORT) + config.worker_index
+        )
         print(f">>> New instance {self} on port: {self.server_port}")
         print(f"Worker Index: {config.worker_index}, VecEnv Index: {config.vector_index}")
         cur_path = os.path.abspath(os.path.dirname(__file__))
@@ -362,22 +365,24 @@ if __name__ == "__main__":
 
     step = 0
     while True:
+        step += 1
         result = trainer.train()
         reward = result["episode_reward_mean"]
         e = result["episodes_total"]
         len1 = result["episode_len_mean"]
         s = result["agent_timesteps_total"]
-        print(f"current_alg:{alg},current_training_steps:{s},train_total:{step},current_reward:{reward},current_len:{len1}")
-        if step !=0 and step %300==0:
-            os.makedirs(args.checkpoint_dir, exist_ok=True)
-            trainer.save_checkpoint(args.checkpoint_dir)
-        step+=1
-        if result["episodes_total"] >= args.stop_episodes:
-            # agent.save_checkpoint(args.checkpoint_path)
-            os.makedirs(args.checkpoint_dir, exist_ok=True)
-            trainer.save_checkpoint(args.checkpoint_dir)
+        print(f"current_alg:{alg},current_training_steps:{s},episodes_total:{e},current_reward:{reward},current_len:{len1}")
+
+        if step != 0 and step % 200 == 0:
+            os.makedirs(args.checkpoint_dir + f"{alg}" + str(args.map_id), exist_ok=True)
+            trainer.save(args.checkpoint_dir + f"{alg}" + str(args.map_id))
+            print("trainer save a checkpoint")
+        if result["agent_timesteps_total"] >= args.stop_timesteps:
+            os.makedirs(args.checkpoint_dir + f"{alg}" + str(args.map_id), exist_ok=True)
+            trainer.save(args.checkpoint_dir + f"{alg}" + str(args.map_id))
             trainer.stop()
             break
-    print('training is done-----------------over')
+
+    print("the training has done!!")
     ray.shutdown()
     sys.exit()
