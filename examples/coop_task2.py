@@ -297,7 +297,7 @@ if __name__ == "__main__":
         trainer = PPOTrainer(
             config={
                 "env": NavigationEnv,
-                "env_confNavigationEnvig": vars(args),
+                "env_config": vars(args),
                 "num_workers": args.num_workers,
                 "train_batch_size": args.train_batch_size,  # default of ray is 4000
                 "ignore_worker_failures":True,
