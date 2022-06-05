@@ -226,7 +226,7 @@ class NavigationEnv(MultiAgentEnv):
         cur_pos = get_position(state)
         tar_pos = self.target_location
         # reward = -get_distance(cur_pos, tar_pos)
-        reward = -1
+        reward = 0
         reward += get_distance(get_position(self.state_dict[agent_id]),tar_pos)-get_distance(cur_pos,tar_pos)
         if get_distance(cur_pos, tar_pos) <= 1:
             reward += 100
@@ -253,40 +253,34 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
 
-    # game setup
-    parser.add_argument("--timeout", type=int, default=60 * 2)  # The time length of one game (sec)
-    parser.add_argument("--time-scale", type=int, default=10)  # speedup factor
-    parser.add_argument("--random-seed", type=int, default=0)
+    parser.add_argument("-T", "--timeout", type=int, default=60 * 3)  # The time length of one game (sec)
+    parser.add_argument("-R", "--time-scale", type=int, default=10)
+    parser.add_argument("-M", "--map-id", type=int, default=1)
+    parser.add_argument("-S", "--random-seed", type=int, default=0)
+    parser.add_argument("--start-location", type=float, nargs=3, default=[0, 0, 0])
+    parser.add_argument("--target-location", type=float, nargs=3, default=[0, 0, 0])
+
+    parser.add_argument("--base-worker-port", type=int, default=50000)
+    parser.add_argument("--engine-dir", type=str, default="../wildscav-linux-backend-v1.0-benchmark")
+    parser.add_argument("--map-dir", type=str, default="../101_104")
+    parser.add_argument("--num-workers", type=int, default=10)
+    parser.add_argument("--eval-interval", type=int, default=None)
+    parser.add_argument("--record", action="store_true")
+    parser.add_argument("--replay-suffix", type=str, default="")
+    parser.add_argument("--checkpoint-dir", type=str, default="checkpoints-")
     parser.add_argument("--detailed-log", action="store_true", help="whether to print detailed logs")
-    parser.add_argument("--heatmap-center", type=float, nargs=3, default=[0, 0, 0])  # the center of the supply heatmap (x, z are the 2D location and y is the height)
-    parser.add_argument("--start-range", type=float, default=1)  # the range of the start location
-    parser.add_argument("--start_height", type=float, default=2)  # the height of the start location
-    parser.add_argument("--engine-dir", type=str, default="../wildscav-linux-backend")  # path to unity executable
-    parser.add_argument("--map-dir", type=str, default="../map_data")  # path to map files
-    parser.add_argument("--map-id", type=int, default=1)  # id of the map
-    parser.add_argument("--use-depth", action="store_true")  # whether to use depth map
-    parser.add_argument("--resume", action="store_true")  # whether to resume training from a checkpoint
-    parser.add_argument("--checkpoint-dir", type=str, default="./agent_track2_a3c", help="dir to checkpoint files")
-    parser.add_argument("--replay-interval", type=int, default=1, help="episode interval to save replay")
-    parser.add_argument("--record", action="store_true", help="whether to record the game")
-    parser.add_argument("--replay-suffix", type=str, default="", help="suffix of the replay filename")
-    parser.add_argument("--inference", action="store_true", help="whether to run inference")
-    parser.add_argument("--num-agents", type=int, default=4)
+    parser.add_argument("--run", type=str, default="ppo", help="The RLlib-registered algorithm to use.")
+    parser.add_argument("--stop-iters", type=int, default=300)
+    parser.add_argument("--stop-timesteps", type=int, default=1e8)
+    parser.add_argument("--stop-reward", type=float, default=98)
+    parser.add_argument("--use-depth", action="store_true")
+    parser.add_argument("--stop-episodes", type=float, default=200000)
     parser.add_argument("--dmp-width", type=int, default=42)
     parser.add_argument("--dmp-height", type=int, default=42)
     parser.add_argument("--dmp-far", type=int, default=200)
-    parser.add_argument("--start-location", type=float, nargs=3, default=[0, 0, 0])
-    parser.add_argument("--target-location", type=float, nargs=3, default=[0, 0, 0])
-    parser.add_argument("--base-worker-port", type=int, default=50000)
-
-    # training config
-    parser.add_argument("--num-workers", type=int, default=0)
-    parser.add_argument("--eval-interval", type=int, default=None)
-    parser.add_argument("--run", type=str, default="PPO", help="The RLlib-registered algorithm to use.")
-    parser.add_argument("--stop_episodes", type=int, default=100000000)
-    parser.add_argument("--stop-timesteps", type=int, default=100000000)
-    parser.add_argument("--stop-reward", type=float, default=999999)
     parser.add_argument("--train-batch-size", type=int, default=2000)
+    parser.add_argument("--reload", type=bool, default=False)
+    parser.add_argument("--reload-dir", type=str, default="")
     args = parser.parse_args()
     # env = SupplyBattleMultiAgentEnv(vars(args))
     # state = env.reset()
@@ -348,23 +342,24 @@ if __name__ == "__main__":
 
     step = 0
     while True:
+        step += 1
         result = trainer.train()
         reward = result["episode_reward_mean"]
         e = result["episodes_total"]
         len1 = result["episode_len_mean"]
         s = result["agent_timesteps_total"]
-        print(f"current_alg:{alg},current_training_steps:{s},train_total:{step},current_reward:{reward},current_len:{len1}")
-        # print(pretty_print(result))
-        if step !=0 and step %300==0:
-            os.makedirs(args.checkpoint_dir, exist_ok=True)
-            trainer.save_checkpoint(args.checkpoint_dir)
-        step+=1
-        if result["episodes_total"] >= args.stop_episodes:
-            # agent.save_checkpoint(args.checkpoint_path)
-            os.makedirs(args.checkpoint_dir, exist_ok=True)
-            trainer.save_checkpoint(args.checkpoint_dir)
+        print(f"current_alg:{alg},current_training_steps:{s},episodes_total:{e},current_reward:{reward},current_len:{len1}")
+
+        if step != 0 and step % 200 == 0:
+            os.makedirs(args.checkpoint_dir + f"{alg}" + str(args.map_id), exist_ok=True)
+            trainer.save(args.checkpoint_dir + f"{alg}" + str(args.map_id))
+            print("trainer save a checkpoint")
+        if result["agent_timesteps_total"] >= args.stop_timesteps:
+            os.makedirs(args.checkpoint_dir + f"{alg}" + str(args.map_id), exist_ok=True)
+            trainer.save(args.checkpoint_dir + f"{alg}" + str(args.map_id))
             trainer.stop()
             break
-    print('training is done-----------------over')
+
+    print("the training has done!!")
     ray.shutdown()
     sys.exit()
