@@ -259,6 +259,7 @@ if __name__ == "__main__":
     parser.add_argument("-S", "--random-seed", type=int, default=0)
     parser.add_argument("--start-location", type=float, nargs=3, default=[0, 0, 0])
     parser.add_argument("--target-location", type=float, nargs=3, default=[0, 0, 0])
+    parser.add_argument("--num-agents", type=int, default=4)
 
     parser.add_argument("--base-worker-port", type=int, default=50000)
     parser.add_argument("--engine-dir", type=str, default="../wildscav-linux-backend-v1.0-benchmark")
