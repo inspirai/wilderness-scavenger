@@ -24,7 +24,7 @@ parser.add_argument("--inference", action="store_true", help="whether to run inf
 # training config
 parser.add_argument("--num-workers", type=int, default=0)
 parser.add_argument("--eval-interval", type=int, default=None)
-parser.add_argument("--run", type=str, default="PPO", help="The RLlib-registered algorithm to use.")
+parser.add_argument("--run", type=str, default="ppo", help="The RLlib-registered algorithm to use.")
 parser.add_argument("--stop-iters", type=int, default=9999)
 parser.add_argument("--stop-timesteps", type=int, default=100000000)
 parser.add_argument("--stop-reward", type=float, default=999999)
@@ -37,35 +37,68 @@ if __name__ == "__main__":
     import ray
     from ray.rllib.agents.ppo import PPOTrainer
     from ray.rllib.agents.a3c import A3CTrainer
+    from ray.rllib.agents.impala import ImpalaTrainer
     from ray.tune.logger import pretty_print
     from track2_env import SupplyGatherDiscreteSingleTarget
 
     args = parser.parse_args()
+    
+    alg = args.run
 
     ray.init()
-    trainer = A3CTrainer(
-        config={
-            "env": SupplyGatherDiscreteSingleTarget,
-            "env_config": vars(args),
-            "framework": "torch",
-            "num_workers": args.num_workers,
-            "evaluation_interval": args.eval_interval,
-            "train_batch_size": args.train_batch_size,  # default of ray is 4000
-            "ignore_worker_failures":True,
-        }
-    )
+    if alg =="ppo":
+        trainer = PPOTrainer(
+            config={
+                "env": SupplyGatherDiscreteSingleTarget,
+                "env_config": vars(args),
+                "framework": "torch",
+                "num_workers": args.num_workers,
+                "evaluation_interval": args.eval_interval,
+                "train_batch_size": args.train_batch_size,  # default of ray is 4000
+                "ignore_worker_failures":True,
+            }
+        )
+    elif alg =="a3c":
+        trainer = A3CTrainer(
+            config={
+                "env": SupplyGatherDiscreteSingleTarget,
+                "env_config": vars(args),
+                "framework": "torch",
+                "num_workers": args.num_workers,
+                "evaluation_interval": args.eval_interval,
+                "train_batch_size": args.train_batch_size,  # default of ray is 4000
+                "ignore_worker_failures":True,
+            }
+        )
+    elif alg =="impala":
+        trainer = ImpalaTrainer(
+            config={
+                "env": SupplyGatherDiscreteSingleTarget,
+                "env_config": vars(args),
+                "framework": "torch",
+                "num_workers": args.num_workers,
+                "evaluation_interval": args.eval_interval,
+                "train_batch_size": args.train_batch_size,  # default of ray is 4000
+                "ignore_worker_failures":True,
+                "num_gpus":0,
+            }
+        )
 
     if args.resume:
         trainer.restore(args.checkpoint_dir)
+    os.makedirs(args.checkpoint_dir, exist_ok=True)
     step=1
+    reward_max= 0
     while True:
         step += 1
         result = trainer.train()
         reward = result["episode_reward_mean"]
-        e = result["episodes_total"]
+        
+        if reward>reward_max:
+            reward_max = reward
+            trainer.save_(args.checkpoint_dir)
         print(f"current_train_steps:{step},episodes_total:{e},current_reward:{reward}")
         if result["episodes_total"] >= args.stop_episodes:
-            os.makedirs(args.checkpoint_dir, exist_ok=True)
             trainer.save_(args.checkpoint_dir)
             trainer.stop()
             break
