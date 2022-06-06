@@ -118,7 +118,7 @@ class SupplyGatherBaseEnv(gym.Env):
         return start_loc
 
     def _action_process(self, action):
-        walk_dir = self.WALK_DIR_LIST[action[0]]
+        walk_dir = self.WALK_DIR_LIST[action]
 
         return {0: [walk_dir, 6, True]}
 
