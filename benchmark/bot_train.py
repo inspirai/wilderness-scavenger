@@ -93,7 +93,7 @@ if __name__ == "__main__":
         step += 1
         result = trainer.train()
         reward = result["episode_reward_mean"]
-        
+        e = result["episodes_total"]
         if reward>reward_max:
             reward_max = reward
             trainer.save(args.checkpoint_dir)
