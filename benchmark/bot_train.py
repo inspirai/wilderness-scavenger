@@ -96,10 +96,10 @@ if __name__ == "__main__":
         
         if reward>reward_max:
             reward_max = reward
-            trainer.save_(args.checkpoint_dir)
+            trainer.save(args.checkpoint_dir)
         print(f"current_train_steps:{step},episodes_total:{e},current_reward:{reward}")
         if result["episodes_total"] >= args.stop_episodes:
-            trainer.save_(args.checkpoint_dir)
+            trainer.save(args.checkpoint_dir)
             trainer.stop()
             break
 
