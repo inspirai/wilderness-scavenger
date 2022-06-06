@@ -72,7 +72,7 @@ class SupplyGatherBaseEnv(gym.Env):
         self.game.set_episode_timeout(env_config["timeout"])
         self.game.set_random_seed(env_config["random_seed"])
         self.game.set_supply_heatmap_center(env_config["heatmap_center"][0:2])
-        self.game.set_supply_heatmap_radius(30)
+        self.game.set_supply_heatmap_radius(300)
         self.game.set_supply_indoor_richness(2)  # 10
         self.game.set_supply_outdoor_richness(2)  # 10
         self.game.set_supply_indoor_quantity_range(10, 20)
@@ -99,7 +99,6 @@ class SupplyGatherBaseEnv(gym.Env):
         self.game.init()
 
     def reset(self):
-        print("Reset for a new game ...")
         self.start_location = self._sample_start_location()
         self.game.set_start_location(self.start_location)
         self.episode_count += 1
@@ -164,12 +163,6 @@ class SupplyGatherBaseEnv(gym.Env):
         self.curr_obs = self._get_obs(state)
 
         done = self.game.is_episode_finished()
-
-        if done:
-            print(f"{self.valid_collected_supply=},{state.num_supply}")
-
-
-
 
 
         return self.curr_obs, reward, done, {}
