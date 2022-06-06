@@ -29,20 +29,21 @@ parser.add_argument("--stop-iters", type=int, default=9999)
 parser.add_argument("--stop-timesteps", type=int, default=100000000)
 parser.add_argument("--stop-reward", type=float, default=999999)
 parser.add_argument("--stop-episodes", type=float, default=100000)
-parser.add_argument("--train-batch-size", type=int, default=800)
+parser.add_argument("--train-batch-size", type=int, default=4000)
 
 
 if __name__ == "__main__":
     import os
     import ray
     from ray.rllib.agents.ppo import PPOTrainer
+    from ray.rllib.agents.a3c import A3CTrainer
     from ray.tune.logger import pretty_print
     from track2_env import SupplyGatherDiscreteSingleTarget
 
     args = parser.parse_args()
 
     ray.init()
-    trainer = PPOTrainer(
+    trainer = A3CTrainer(
         config={
             "env": SupplyGatherDiscreteSingleTarget,
             "env_config": vars(args),
@@ -50,18 +51,22 @@ if __name__ == "__main__":
             "num_workers": args.num_workers,
             "evaluation_interval": args.eval_interval,
             "train_batch_size": args.train_batch_size,  # default of ray is 4000
+            "ignore_worker_failures":True,
         }
     )
 
     if args.resume:
-        trainer.load_checkpoint(args.checkpoint_dir)
-
+        trainer.restore(args.checkpoint_dir)
+    step=1
     while True:
+        step += 1
         result = trainer.train()
-        print(pretty_print(result))
+        reward = result["episode_reward_mean"]
+        e = result["episodes_total"]
+        print(f"current_train_steps:{step},episodes_total:{e},current_reward:{reward}")
         if result["episodes_total"] >= args.stop_episodes:
             os.makedirs(args.checkpoint_dir, exist_ok=True)
-            trainer.save_checkpoint(args.checkpoint_dir)
+            trainer.save_(args.checkpoint_dir)
             trainer.stop()
             break
 
