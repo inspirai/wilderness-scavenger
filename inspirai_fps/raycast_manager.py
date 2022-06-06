@@ -9,6 +9,10 @@ from math import radians
 from numpy.ctypeslib import ndpointer
 from typing import List
 
+import logging
+
+logger = logging.getLogger("rich")
+
 
 def perspective_frustum(hw_ratio, x_fov, znear, zfar):
     assert znear != zfar
@@ -91,7 +95,9 @@ class RaycastManager(object):
             c_func.argtypes = [ctypes.c_void_p]
 
         except Exception:
-            print("External library not loaded correctly: {}".format(lib_filename))
+            logger.exception(
+                "External library not loaded correctly: {}".format(lib_filename)
+            )
 
         self.depth_ptr = ctypes.POINTER(ctypes.c_void_p)()
 
@@ -204,4 +210,4 @@ class RaycastManager(object):
 
     def __del__(self):
         self._free_mesh()
-        print(f"[free] memory used by {self.mesh_file_path} is freed")
+        logger.info(f"[free] memory used by {self.mesh_file_path} is freed")

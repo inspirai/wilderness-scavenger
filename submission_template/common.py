@@ -1,7 +1,3 @@
-import requests
-from rich.pretty import pprint
-
-
 # game configs -- depth map w/h ratio is 16:9
 DEPTH_MAP_FAR = 200
 DEPTH_MAP_WIDTH = 64
@@ -44,29 +40,49 @@ def get_args():
 
 
 def send_results(data):
+    import requests
+    import logging
+    
     url_head = "https://wildscav-eval.inspirai.com/api/evaluations/status?token=baiyangshidai_inspir"
     url = url_head + "&" + "&".join([f"{k}={v}" for k, v in data.items()])
-    message = requests.get(url).json()["message"]
+    
+    try:
+        with requests.Session() as s:
+            message = s.get(url, timeout=5).text
+    except Exception as e:
+        message = "Failed to send results"
 
-    pprint({
+    logger = logging.getLogger("rich")
+    logger.info({
         "URL": url,
         "Response": message,
     })
 
 
 if __name__ == "__main__":
-    print(
-        send_results(
-            {
-                "id": 7,
-                "status": RunningStatus.STARTED,
-                "current_episode": 5,
-                "total_episodes": 10,
-                "average_time_use": 0.1,
-                "average_time_punish": 0.2,
-                "average_time_total": 0.3,
-                "success_rate": 0.4,
-                "num_supply": 0,
-            }
-        )
+    send_results(
+        {
+            "id": 7,
+            "status": RunningStatus.STARTED,
+            "current_episode": 5,
+            "total_episodes": 10,
+            "average_time_use": 0.1,
+            "average_time_punish": 0.2,
+            "average_time_total": 0.3,
+            "success_rate": 0.4,
+            "num_supply": 0,
+        }
     )
+
+
+    import logging
+    from rich.logging import RichHandler
+
+    FORMAT = "%(message)s"
+    logging.basicConfig(
+        level="NOTSET", format=FORMAT, datefmt="[%X]", handlers=[RichHandler()]
+    )
+
+    logger = logging.getLogger("rich")
+    logger.setLevel("ERROR")
+    logger.info("Hello, World!")

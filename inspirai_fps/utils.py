@@ -1,8 +1,19 @@
 import json
+import logging
 import numpy as np
 from typing import Any, Dict, Iterable, List, Tuple
+from rich.logging import RichHandler
 from rich.console import Console
 from rich.table import Table
+from functools import wraps
+
+
+FORMAT = "%(message)s"
+logging.basicConfig(
+    level="NOTSET", format=FORMAT, datefmt="[%X]", handlers=[RichHandler()]
+)
+logger = logging.getLogger("rich")
+logger.setLevel(logging.INFO)
 
 
 def load_json(file_path):
@@ -64,7 +75,7 @@ def set_GM_command(gm_cmd, config: Dict[str, Any]):
 
 def plot_movement_trajectory(points: List[Tuple[float, float]], save_path: str):
     import matplotlib.pyplot as plt
-    
+
     xs = [p[0] for p in points]
     ys = [p[1] for p in points]
     plt.plot(xs, ys, "o-", c="r")
@@ -72,7 +83,7 @@ def plot_movement_trajectory(points: List[Tuple[float, float]], save_path: str):
     # plt.ylim(-250, 250)
 
     for i, (x, y) in enumerate(points):
-        plt.annotate(i*5, (x, y), c="b")
+        plt.annotate(i * 5, (x, y), c="b")
 
     plt.savefig(save_path)
 
