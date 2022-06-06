@@ -50,13 +50,7 @@ class SupplyGatherBaseEnv(gym.Env):
         self.WALK_SPEED_LIST = [0, 8]  # [3, 6, 9] # [0, 1, 2]
         self.PICKUP_LIST = [True]
 
-        self.action_space = MultiDiscrete(
-            [
-                len(self.WALK_DIR_LIST),
-                len(self.WALK_SPEED_LIST),
-                len(self.PICKUP_LIST),
-            ]
-        )
+        self.action_space = gym.spaces.Discrete(4)
 
         self.supply_attribute_len = 3
 
@@ -125,10 +119,8 @@ class SupplyGatherBaseEnv(gym.Env):
 
     def _action_process(self, action):
         walk_dir = self.WALK_DIR_LIST[action[0]]
-        walk_speed = self.WALK_SPEED_LIST[action[1]]
-        pickup = self.PICKUP_LIST[action[2]]
 
-        return {0: [walk_dir, walk_speed, pickup]}
+        return {0: [walk_dir, 6, True]}
 
     def step(self, action):
         """
@@ -223,17 +215,10 @@ class SupplyGatherDiscreteSingleTarget(SupplyGatherBaseEnv):
         state = super().reset()
 
         # the initial goal is the supply heatmap center
-        self.target_supply = [
-            self.args["heatmap_center"][0],
-            self.args["heatmap_center"][1],
-            self.args["heatmap_center"][2],
-        ]
-        obs = []
-        cur_pos = np.asarray(get_position(state))
-        tar_pos = np.asarray(self.target_supply)
-        dir_vec = tar_pos - cur_pos
+        self.target_supply = None
         
-        return dir_vec
+        
+        return self._get_obs(state)
 
     def _other_process(self, done: bool):
         # if found no good solution, stop the episode
