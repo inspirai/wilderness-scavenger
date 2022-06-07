@@ -90,7 +90,7 @@ if __name__ == "__main__":
     else:
         raise ValueError('No such algorithm')
     print("done")
-    trainer.restore("./checkpoint_001600/checkpoint-1600")
+    trainer.restore(args.checkpoint_dir)
     env = NavigationEnv(eval_cfg)
     episode_len = []
     for i in range(20):
