@@ -13,7 +13,7 @@ package_data = ["__init__.py", "lib/*"]
 
 setup(
     name="inspirai_fps",
-    version="0.0.3",
+    version="1.0.0",
     author="Inspir.AI",
     author_email="cog2022@inspirai.com",
     url="https://github.com/inspirai/wilderness-scavenger",
@@ -23,7 +23,7 @@ setup(
     packages=["inspirai_fps"],
     python_requires=">=3.8, <4",
     package_data={"inspirai_fps": package_data},
-    install_requires=["requests", "Pillow", "numpy", "grpcio", "rich", "protobuf", "trimesh"],
+    install_requires=["requests", "Pillow", "numpy", "grpcio", "rich", "protobuf", "trimesh", "shapely"],
     extras_require={"baseline": ["gym", "ray[rllib]", "torch"]},
     keywords=[
         "inspirai",
