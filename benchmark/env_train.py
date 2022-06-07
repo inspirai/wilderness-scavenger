@@ -18,7 +18,7 @@ class NavigationEnv(gym.Env):
         self.config = config
         self.render_scale = config.get("render_scale", 1)
 
-        env_seed = config.get("random_seed", 0) + config.worker_index
+        env_seed = config.get("random_seed", 0) + config.get("worker_index",0)
 
         # only 240 * 320 can be aotu transform into conv model
         dmp_width = config["dmp_width"]
@@ -66,16 +66,16 @@ class NavigationEnv(gym.Env):
 
         self.replay_suffix = config.get("replay_suffix", "")
         self.print_log = config.get("detailed_log", False)
-        self.seed(env_seed)
+        # self.seed(env_seed)
         self.server_port = (
-                config.get("base_worker_port", BASE_WORKER_PORT) + config.worker_index
+                config.get("base_worker_port", BASE_WORKER_PORT) + config.get("worker_index",0)
         )
         if self.config.get("in_evaluation", False):
             self.server_port += 100
         print(f">>> New instance {self} on port: {self.server_port}")
-        print(
-            f"Worker Index: {config.worker_index}, VecEnv Index: {config.vector_index}"
-        )
+        # print(
+        #     f"Worker Index: {config.worker_index}, VecEnv Index: {config.vector_index}"
+        # )
 
         self.game = Game(
             map_dir=config["map_dir"],
@@ -84,7 +84,7 @@ class NavigationEnv(gym.Env):
         )
         self.game.set_map_id(config["map_id"])
         self.game.set_episode_timeout(config["timeout"])
-        self.game.set_random_seed(env_seed)
+        # self.game.set_random_seed(env_seed)
         self.start_location = config.get("start_location", [0, 0, 0])
         if self.config.get("record", False):
             self.game.turn_on_record()
