@@ -46,17 +46,10 @@ def send_results(data):
     url_head = "https://wildscav-eval.inspirai.com/api/evaluations/status?token=baiyangshidai_inspir"
     url = url_head + "&" + "&".join([f"{k}={v}" for k, v in data.items()])
     
-    try:
-        with requests.Session() as s:
-            message = s.get(url, timeout=5).text
-    except Exception as e:
-        message = "Failed to send results"
+    message = requests.get(url, timeout=3).text
 
     logger = logging.getLogger("rich")
-    logger.info({
-        "URL": url,
-        "Response": message,
-    })
+    logger.info("Response: %s", message)
 
 
 if __name__ == "__main__":

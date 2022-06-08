@@ -47,17 +47,7 @@ SUPPLY_CONFIGS = {
 }
 
 
-def run_eval(args, eval_id=None):
-    from common import (
-        TURN_ON_RECORDING,
-        DEPTH_MAP_WIDTH,
-        DEPTH_MAP_HEIGHT,
-        DEPTH_MAP_FAR,
-        RunningStatus,
-        DEFAULT_PAYLOAD,
-        send_results
-    )
-
+def run_eval(game, args, message_data):
     from inspirai_fps import Game
     from inspirai_fps.utils import get_position
     from submission.agents import AgentSupplyGathering
@@ -65,11 +55,17 @@ def run_eval(args, eval_id=None):
     import random
     from functools import partial
     from rich.console import Console
+    from common import (
+        DEPTH_MAP_WIDTH,
+        DEPTH_MAP_HEIGHT,
+        DEPTH_MAP_FAR,
+        RunningStatus,
+        send_results
+    )
 
     random.seed(args.seed)
     print = partial(Console().print, style="bold magenta")
 
-    game = Game(map_dir=args.map_dir, engine_dir=args.engine_dir)
     game.set_random_seed(args.seed)
     game.set_game_mode(Game.MODE_SUP_GATHER)
     game.set_episode_timeout(args.episode_timeout)
@@ -90,19 +86,12 @@ def run_eval(args, eval_id=None):
     game.set_supply_outdoor_quantity_range(
         **SUPPLY_CONFIGS["supply_outdoor_quantity_range"]
     )
-    game.init()
 
     results = []
     ep_idx = 0
     
-    data = DEFAULT_PAYLOAD.copy()
-    data.update({
-        "id": eval_id,
-        "status": RunningStatus.STARTED,
-        "current_episode": ep_idx,
-        "total_episodes": len(args.map_list) * args.episodes_per_map
-    })
-    send_results(data)
+    message_data.update({"current_episode": ep_idx})
+    send_results(message_data)
 
     for map_id in args.map_list:
         game.set_map_id(map_id)
@@ -144,14 +133,12 @@ def run_eval(args, eval_id=None):
 
             ep_idx += 1
 
-            data.update({
+            message_data.update({
                 "current_episode": ep_idx,
                 "average_supply": sum(r["num_supply"] for r in results) / len(results)
             })
-            send_results(data)
+            send_results(message_data)
 
-    game.close()
-
-    data.update({"status": RunningStatus.FINISHED})
-    send_results(data)
+    message_data.update({"status": RunningStatus.FINISHED})
+    send_results(message_data)
     

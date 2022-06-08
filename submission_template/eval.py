@@ -54,10 +54,24 @@ if __name__ == "__main__":
 
     pprint(args)
 
+    from inspirai_fps import Game
+    from common import RunningStatus, DEFAULT_PAYLOAD, send_results
+
+    game = Game(map_dir=args.map_dir, engine_dir=args.engine_dir)
+    game.init()
+
+    data = DEFAULT_PAYLOAD.copy()
+    data.update({
+        "id": eval_id,
+        "status": RunningStatus.STARTED,
+        "total_episodes": len(args.map_list) * args.episodes_per_map
+    })
+
     try:
-        run_eval(args, eval_id)
+        run_eval(game, args, data)
     except Exception as e:
-        from common import RunningStatus, DEFAULT_PAYLOAD, send_results
-        data = DEFAULT_PAYLOAD.copy()
-        data.update({"id": eval_id, "status": RunningStatus.ERROR})
+        print(e)
+        data.update({"status": RunningStatus.ERROR})
         send_results(data)
+
+    game.close()
