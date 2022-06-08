@@ -1,6 +1,5 @@
 from inspirai_fps import ActionVariable
 
-
 # evaluation configs
 NUM_AGENTS = 10
 USED_ACTIONS = [
@@ -46,17 +45,7 @@ SUPPLY_CONFIGS = {
 }
 
 
-def run_eval(args, eval_id=None):
-    from common import (
-        TURN_ON_RECORDING,
-        DEPTH_MAP_WIDTH,
-        DEPTH_MAP_HEIGHT,
-        DEPTH_MAP_FAR,
-        RunningStatus,
-        DEFAULT_PAYLOAD,
-        send_results
-    )
-
+def run_eval(game, args, message_data):
     from inspirai_fps import Game
     from inspirai_fps.utils import get_position
     from submission.agents import AgentSupplyBattle
@@ -64,11 +53,17 @@ def run_eval(args, eval_id=None):
     import random
     from functools import partial
     from rich.console import Console
+    from common import (
+        DEPTH_MAP_WIDTH,
+        DEPTH_MAP_HEIGHT,
+        DEPTH_MAP_FAR,
+        RunningStatus,
+        send_results,
+    )
 
     random.seed(args.seed)
     print = partial(Console().print, style="bold magenta")
 
-    game = Game(map_dir=args.map_dir, engine_dir=args.engine_dir)
     game.set_random_seed(args.seed)
     game.set_game_mode(Game.MODE_SUP_BATTLE)
     game.set_episode_timeout(args.episode_timeout)
@@ -76,19 +71,12 @@ def run_eval(args, eval_id=None):
     game.set_depth_map_size(DEPTH_MAP_WIDTH, DEPTH_MAP_HEIGHT, DEPTH_MAP_FAR)
     for agent_id in range(1, NUM_AGENTS):
         game.add_agent()
-    game.init()
 
     results = []
     ep_idx = 0
-    
-    data = DEFAULT_PAYLOAD.copy()
-    data.update({
-        "id": eval_id,
-        "status": RunningStatus.STARTED,
-        "current_episode": ep_idx,
-        "total_episodes": len(args.map_list) * args.episodes_per_map
-    })
-    send_results(data)
+
+    message_data.update({"current_episode": ep_idx})
+    send_results(message_data)
 
     for map_id in args.map_list:
         game.set_map_id(map_id)
@@ -144,8 +132,6 @@ def run_eval(args, eval_id=None):
 
             print(game.get_game_config())
 
-            # _ = input("Just a break ...")
-            
             game.new_episode()
 
             episode_info = {
@@ -157,15 +143,15 @@ def run_eval(args, eval_id=None):
                 "refresh_heatmap_radius": heatmap_radius,
                 "time_step_per_action": game.time_step_per_action,
             }
-            agent = AgentSupplyBattle(episode_info)  # Your agent here
 
-            robots = {}
-            for agent_id in range(1, NUM_AGENTS):
-                info = episode_info.copy()
-                info["start_location"] = game.get_start_location(agent_id)
-                robots[agent_id] = AgentSupplyBattle(
-                    info
-                )  # Will be replaced by our trained baseline
+            agents = {}
+            for agent_id in range(NUM_AGENTS):
+                if agent_id == 0:
+                    agents[agent_id] = AgentSupplyBattle(episode_info)  # Your agent here
+                else:
+                    info = episode_info.copy()
+                    info["start_location"] = game.get_start_location(agent_id)
+                    agents[agent_id] = AgentSupplyBattle(info)  # will be replaced with our robot agent
 
             print(f">>>>>> Map {map_id:03d} - Episode {ep} <<<<<<")
 
@@ -173,19 +159,17 @@ def run_eval(args, eval_id=None):
                 ts = game.get_time_step()
                 state_all = game.get_state_all()
                 action_all = {
-                    agent_id: robots[agent_id].act(ts, state_all[agent_id])
-                    for agent_id in range(1, NUM_AGENTS)
+                    agent_id: agents[agent_id].act(ts, state_all[agent_id])
+                    for agent_id in range(NUM_AGENTS)
                 }
-                action_all[0] = agent.act(ts, state_all[0])
                 game.make_action(action_all)
 
                 if ts % 50 == 0:
                     walk_dir = round(action_all[0].walk_dir, 2)
                     curr_loc = [round(x, 2) for x in get_position(state_all[0])]
                     num_supply = state_all[0].num_supply
-                    GameTime = ts // game.frame_rate
                     print(
-                        f"{map_id=}\t{ep=}\t{GameTime=}s\t{curr_loc=}\t{num_supply=}\t{walk_dir=}"
+                        f"{map_id=}\t{ep=}\t{ts=}\t{curr_loc=}\t{num_supply=}\t{walk_dir=}"
                     )
 
             res = game.get_game_result()
@@ -195,13 +179,14 @@ def run_eval(args, eval_id=None):
             print(res)
 
             ep_idx += 1
-            data.update({
-                "current_episode": ep_idx,
-                "average_supply": sum(r["num_supply"] for r in results) / len(results)
-            })
-            send_results(data)
+            message_data.update(
+                {
+                    "current_episode": ep_idx,
+                    "average_supply": sum(r["num_supply"] for r in results)
+                    / len(results),
+                }
+            )
+            send_results(message_data)
 
-    game.close()
-
-    data.update({"status": RunningStatus.FINISHED})
-    send_results(data)
+    message_data.update({"status": RunningStatus.FINISHED})
+    send_results(message_data)
