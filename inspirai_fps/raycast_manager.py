@@ -91,9 +91,7 @@ class RaycastManager(object):
             c_func.argtypes = [ctypes.c_void_p]
 
         except Exception:
-            logger.exception(
-                "External library not loaded correctly: {}".format(lib_filename)
-            )
+            print("External library not loaded correctly: {}".format(lib_filename))
 
         self.depth_ptr = ctypes.POINTER(ctypes.c_void_p)()
 
