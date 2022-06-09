@@ -9,10 +9,6 @@ from math import radians
 from numpy.ctypeslib import ndpointer
 from typing import List
 
-import logging
-
-logger = logging.getLogger("rich")
-
 
 def perspective_frustum(hw_ratio, x_fov, znear, zfar):
     assert znear != zfar
@@ -210,4 +206,4 @@ class RaycastManager(object):
 
     def __del__(self):
         self._free_mesh()
-        logger.info(f"[free] memory used by {self.mesh_file_path} is freed")
+        print(f"[free] memory used by {self.mesh_file_path} is freed")

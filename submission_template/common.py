@@ -1,3 +1,7 @@
+import requests
+import argparse
+
+
 # game configs -- depth map w/h ratio is 16:9
 DEPTH_MAP_FAR = 200
 DEPTH_MAP_WIDTH = 64
@@ -27,8 +31,6 @@ DEFAULT_PAYLOAD = {
 
 
 def get_args():
-    import argparse
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--map-list", type=int, nargs="+", default=list(range(91, 100)))
     parser.add_argument("--map-dir", type=str, default="/data/map-data")
@@ -40,16 +42,10 @@ def get_args():
 
 
 def send_results(data):
-    import requests
-    import logging
-    
     url_head = "https://wildscav-eval.inspirai.com/api/evaluations/status?token=baiyangshidai_inspir"
     url = url_head + "&" + "&".join([f"{k}={v}" for k, v in data.items()])
-    
     message = requests.get(url, timeout=3).text
-
-    logger = logging.getLogger("rich")
-    logger.info("Response: %s", message)
+    print("Response: %s", message)
 
 
 if __name__ == "__main__":
@@ -66,16 +62,3 @@ if __name__ == "__main__":
             "num_supply": 0,
         }
     )
-
-
-    import logging
-    from rich.logging import RichHandler
-
-    FORMAT = "%(message)s"
-    logging.basicConfig(
-        level="NOTSET", format=FORMAT, datefmt="[%X]", handlers=[RichHandler()]
-    )
-
-    logger = logging.getLogger("rich")
-    logger.setLevel("ERROR")
-    logger.info("Hello, World!")

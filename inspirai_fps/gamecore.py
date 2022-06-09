@@ -31,10 +31,6 @@ __all__ = [
     "Game",
 ]
 
-import logging
-
-logger = logging.getLogger("rich")
-
 
 class QueueServer(simple_command_pb2_grpc.CommanderServicer):
     def __init__(self, request_queue, reply_queue) -> None:
@@ -43,10 +39,10 @@ class QueueServer(simple_command_pb2_grpc.CommanderServicer):
         self.reply_queue = reply_queue
 
     def Request_S2A_UpdateGame(self, request, context):
-        logger.debug(request)
+        # print(request)
         self.request_queue.put(request)
         reply = self.reply_queue.get()
-        logger.debug(reply)
+        # print(reply)
         return reply
 
 
@@ -490,7 +486,7 @@ class Game:
         self.__indoor_locations = locations["indoor"]
         self.__outdoor_locations = locations["outdoor"]
         self.__valid_locations = locations
-        logger.info(f"Loaded valid locations from {location_file_path}")
+        print(f"Loaded valid locations from {location_file_path}")
 
     def get_valid_locations(self):
         return self.__valid_locations.copy()
@@ -692,7 +688,7 @@ class Game:
         )
         self.server.add_insecure_port(f"[::]:{self.__server_port}")
         self.server.start()
-        logger.info("Server started ...")
+        print("Server started ...")
 
         if sys.platform.startswith("linux"):
             engine_path = os.path.join(self.__engine_dir, "fps.x86_64")
@@ -724,11 +720,11 @@ class Game:
         self.engine_process = subprocess.Popen(
             cmd.split(), stdout=f, stderr=f, shell=shell
         )
-        logger.info("Unity3D started ...")
+        print("Unity3D started ...")
 
         # waiting for unity3d to send the first request
         self.request_queue.get()  # the first request is only used to activate the server
-        logger.info("Unity3D connected ...")
+        print("Unity3D connected ...")
 
     def get_state(self, agent_id=0) -> AgentState:
         for obs_data in self.__latest_request.agent_obs_list:
@@ -820,7 +816,7 @@ class Game:
         self.__update_request()
         self.__time_step = 0
 
-        logger.info("Started new episode ...")
+        print("Started new episode ...")
 
         # load mesh data
         mesh_name = f"{self.__GM.map_id:03d}.obj"
@@ -830,9 +826,9 @@ class Game:
             # release raytracer resources
             del self.__ray_tracer
             self.__ray_tracer = RaycastManager(mesh_file_path)
-            logger.info("[change] Loaded map mesh from {}".format(mesh_file_path))
+            print("[change] Loaded map mesh from {}".format(mesh_file_path))
         else:
-            logger.info("[keep] Reused map mesh from {}".format(mesh_file_path))
+            print("[keep] Reused map mesh from {}".format(mesh_file_path))
 
         # setup depth map size
         self.__ray_tracer.WIDTH = self.dmp_width
@@ -845,10 +841,10 @@ class Game:
         self.reply_queue.put(reply)
         time.sleep(1)
         self.server.stop(0)
-        logger.info("Server stopped ...")
+        print("Server stopped ...")
 
         self.engine_process.kill()
-        logger.info("Unity3D killed ...")
+        print("Unity3D killed ...")
 
     @property
     def use_depth_map(self):
