@@ -36,19 +36,19 @@ if __name__ == "__main__":
         if not args.local_test:
             args.map_list = list(range(101, 111))
             args.episode_timeout = 60 * 5
-            args.episode_per_map = 10
+            args.episodes_per_map = 10
     elif args.track == "1b":
         from eval_track_1_2 import run_eval
         if not args.local_test:
             args.map_list = list(range(111, 121))
             args.episode_timeout = 60 * 10
-            args.episode_per_map = 10
+            args.episodes_per_map = 10
     elif args.track == "2":
         from eval_track_2 import run_eval
         if not args.local_test:
             args.map_list = list(range(121, 131))
             args.episode_timeout = 60 * 15
-            args.episode_per_map = 1
+            args.episodes_per_map = 1
     else:
         raise ValueError(f"Unknown track {args.track}")
 
@@ -67,11 +67,14 @@ if __name__ == "__main__":
         "total_episodes": len(args.map_list) * args.episodes_per_map
     })
 
-    try:
+    if args.local_test:
         run_eval(game, args, data)
-    except Exception as e:
-        print(e)
-        data.update({"status": RunningStatus.ERROR})
-        send_results(data)
+    else:
+        try:
+            run_eval(game, args, data)
+        except Exception as e:
+            print(e)
+            data.update({"status": RunningStatus.ERROR})
+            send_results(data)
 
     game.close()
