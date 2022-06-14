@@ -7,6 +7,7 @@ Here we provide a template for you to easily pack your solution and upload it to
 ```bash
 submission_template
 ├── Dockerfile               # Dockerfile for building the submission image
+├── run.sh                   # Evaluation pipeline entrypoint
 ├── common.py                # Common functions and variables
 ├── eval.py                  # Main evaluation script
 ├── eval_track_1_1.py        # Evaluation function for track 1.1
@@ -78,6 +79,17 @@ Once you are satisfied with your solution, you can submit your solution followin
     ```bash
     # make sure your are in the root of this template folder
     zip -r /path/to/submission.zip * 
+    ```
+- make sure your zip package include the following content
+
+    ```bash
+    .
+    ├── Dockerfile               # Dockerfile for building the submission image
+    ├── run.sh                   # Evaluation pipeline entrypoint
+    ├── requirements.txt         # Additional python packages required by the submission 
+    └── submission               # Submission source code and data
+        ├── __init__.py          # Making the submission folder a python package
+        └── agents.py            # Agent classes for the 3 tracks
     ```
 
 - upload your solution to our [online evaluation system](https://wildscav-eval.inspirai.com) (the maximum size of the zip file is limited 500MB)
