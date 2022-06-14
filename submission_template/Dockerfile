@@ -16,5 +16,3 @@ RUN pip install -r requirements.txt
 WORKDIR /home/inspirai
 COPY submission submission
 COPY run.sh run.sh
-
-ENTRYPOINT [ "/bin/bash" ]
