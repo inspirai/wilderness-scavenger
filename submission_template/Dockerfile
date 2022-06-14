@@ -15,4 +15,6 @@ RUN pip install -r requirements.txt
 # DO NOT MODIFY BELOW THIS LINE
 WORKDIR /home/inspirai
 COPY submission submission
-COPY eval.py eval.py
+COPY run.sh run.sh
+
+ENTRYPOINT [ "/bin/bash" ]

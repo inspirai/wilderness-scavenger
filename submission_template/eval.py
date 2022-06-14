@@ -27,9 +27,6 @@ if __name__ == "__main__":
     if not args.local_test:
         args.map_dir = REMOTE_MAP_DIR
         args.engine_dir = REMOTE_ENGINE_DIR
-        print("======== Copying evaluation scripts ========")
-        os.system("cp /root/submission_template/*.py . && ls")
-        print("================= Finished =================")
 
     if args.track == "1a":
         from eval_track_1_1 import run_eval
