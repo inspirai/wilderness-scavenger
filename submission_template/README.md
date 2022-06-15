@@ -78,7 +78,7 @@ Once you are satisfied with your solution, you can submit your solution followin
 
     ```bash
     # make sure your are in the root of this template folder
-    zip -r /path/to/submission.zip * 
+    zip -r /path/to/submission.zip Dockerfile run.sh requirements.txt submission
     ```
 - make sure your zip package include the following content
 
