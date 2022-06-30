@@ -1,3 +1,5 @@
+import os
+import torch
 import random
 import numpy as np
 from typing import NamedTuple
@@ -36,16 +38,52 @@ class SupplyBattleAction(NamedTuple):
     reload: bool
 
 
+import ray
+from ray.rllib.agents import ppo
+
+
 class AgentNavigation:
     """
     This is a template of an agent for the navigation task.
     TODO: Modify the code in this class to implement your agent here.
     """
 
+    # the model file is saved in the same directory as this file
+    MODEL_PATH = os.path.join(os.path.dirname(__file__), "model.pth")
+
     def __init__(self, episode_info) -> None:
         self.episode_info = episode_info
 
+        from submission.envs import NavigationEnv
+        
+        obs_space = NavigationEnv.OBS_SPACE
+        act_space = NavigationEnv.ACT_SPACE
+
+        self.policy = ppo.PPOTorchPolicy(obs_space, act_space, {})
+        self.policy.model.load_state_dict(torch.load(self.MODEL_PATH))
+
     def act(self, ts: int, state: AgentState) -> NavigationAction:
+        obs = {
+            "cur_loc": np.asarray(get_position(state)),
+            "tar_loc": np.asarray(self.episode_info["target_location"]),
+        }
+
+        action_dict = self.policy.compute_single_action(
+            observation=obs,
+            explore=True
+        )[0]
+        walk_dir = action_dict["walk_dir"]
+        walk_speed = action_dict["walk_speed"]
+
+        return NavigationAction(
+            walk_dir=walk_dir,
+            walk_speed=walk_speed,
+            turn_lr_delta=0,
+            look_ud_delta=0,
+            jump=False,
+        )
+
+    def act_backup(self, ts: int, state: AgentState) -> NavigationAction:
         pos = np.asarray(get_position(state))
         tar = np.asarray(self.episode_info["target_location"])
         dir = tar - pos
