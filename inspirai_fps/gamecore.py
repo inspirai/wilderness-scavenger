@@ -640,6 +640,22 @@ class Game:
 
         self.__GM.num_agents += 1
 
+    def set_agent_config(self,
+        agent_id,
+        health=100,
+        num_pack_ammo=60,
+        num_clip_ammo=15,
+        attack=20,
+    ):
+        assert 0 <= agent_id < len(self.__GM.agent_setups)
+        
+        for agent in self.__GM.agent_setups:
+            if agent.id == agent_id:
+                agent.hp = health
+                agent.num_pack_ammo = num_pack_ammo
+                agent.gun_capacity = num_clip_ammo
+                agent.attack_power = attack
+
     def turn_on_record(self):
         self.__GM.is_record = True
 
