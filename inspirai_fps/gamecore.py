@@ -541,8 +541,11 @@ class Game:
 
     def set_supply_heatmap_center(self, loc: List[float]):
         """loc: a list of two numbers that represent the x and z values of the center location"""
-        assert isinstance(loc, list) and len(loc) == 2
-        center = [loc[0], 0, loc[1]]
+        assert isinstance(loc, list) and len(loc) in [2, 3]
+        if len(loc) == 2:
+            center = [loc[0], 0, loc[1]]
+        else:
+            center = loc
         set_vector3d(self.__GM.supply_heatmap_center, center)
 
     def random_supply_heatmap_center(self, indoor: bool = True):
@@ -655,6 +658,9 @@ class Game:
                 agent.num_pack_ammo = num_pack_ammo
                 agent.gun_capacity = num_clip_ammo
                 agent.attack_power = attack
+
+    def clear_agent_config(self):
+        del self.__GM.agent_setups[:]
 
     def turn_on_record(self):
         self.__GM.is_record = True
