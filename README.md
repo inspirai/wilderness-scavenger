@@ -4,6 +4,7 @@ This is a platform for intelligent agent learning based on a 3D open-world FPS g
 
 ## Change Log
 
+- 2022-08-15: removed raycaster libs of the Mac and Windows platforms, only Linux platform is supported currently!
 - 2022-05-16: improved engine backend (Linux) with better stability (v1.0)
   - Check out [Supported Platforms](#supported-platforms) for download links.
   - Make sure to update to the latest version of the engine if you would like to use depth map or enemy state features.
