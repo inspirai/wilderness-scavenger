@@ -33,10 +33,10 @@ class RaycastManager(object):
 
         if platform.startswith("linux"):
             lib_filename = "libraycaster.so"
-        elif platform.startswith("darwin"):
-            lib_filename = "libraycaster.dylib"
-        elif platform.startswith("win"):
-            lib_filename = "raycaster.dll"
+        # elif platform.startswith("darwin"):
+        #     lib_filename = "libraycaster.dylib"
+        # elif platform.startswith("win"):
+        #     lib_filename = "raycaster.dll"
         else:
             raise NotImplementedError(f"{platform} is not supported")
 
