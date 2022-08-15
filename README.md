@@ -63,8 +63,8 @@ We developed this repository to provide a training and evaluation platform for t
 We support the multiple platforms with different engine backends, including:
 
 - Linux: download the engine from [Google Drive](https://drive.google.com/file/d/1gDkaKtwC8QUFbrrO1Zc1VwPhb3QcHaLl/view?usp=sharing) or [Feishu](https://inspirai.feishu.cn/file/boxcnwohwxo3EqCUbOhRj4ESJBb) (last updated on 2022-05-16)
-- Windows: download the engine from [Google Drive](https://drive.google.com/file/d/1DwjnB7Harpeo5f57fjKpfp-43vvSLtQO/view?usp=sharing) or [Feishu](https://inspirai.feishu.cn/file/boxcnG8EP0RuTI3ImX2mmhat23d) (last updated on 2022-05-18)  
-- MacOS: download the engine from [Google Drive](https://drive.google.com/file/d/1I56Db8QvLpPQo8eUSi914MJT1-4ze-om/view?usp=sharing) or [Feishu](https://scwc0a0eu7.feishu.cn/file/boxcnfFqRae6L42wS2lRyhPDNXe) (last updated on 2022-05-18)
+- Windows: download the engine from [~~Google Drive~~](https://drive.google.com/file/d/1DwjnB7Harpeo5f57fjKpfp-43vvSLtQO/view?usp=sharing) or [~~Feishu~~](https://inspirai.feishu.cn/file/boxcnG8EP0RuTI3ImX2mmhat23d) (last updated on 2022-05-18)  
+- MacOS: download the engine from [~~Google Drive~~](https://drive.google.com/file/d/1I56Db8QvLpPQo8eUSi914MJT1-4ze-om/view?usp=sharing) or [~~Feishu~~](https://scwc0a0eu7.feishu.cn/file/boxcnfFqRae6L42wS2lRyhPDNXe) (last updated on 2022-05-18)
 
 ## Installation (from source)
 
