@@ -216,6 +216,9 @@ class AgentState:
         self.num_supply = obs_data.num_supply
         self.is_waiting_respawn = obs_data.is_waiting_respawn
         self.is_invincible = obs_data.is_invincible
+        self.camera_image = None
+        if len(obs_data.image) > 0:
+            self.camera_image = Image.open(io.BytesIO(obs_data.image))
 
         self.ray_tracer = ray_tracer
 
@@ -699,7 +702,7 @@ class Game:
     def target_trigger_distance(self):
         return self.__GM.trigger_range
 
-    def init(self):
+    def init(self, entry_point="fps.x86_64"):
         self.request_queue = Queue()
         self.reply_queue = Queue()
 
@@ -713,7 +716,7 @@ class Game:
         print("Server started ...")
 
         if sys.platform.startswith("linux"):
-            engine_path = os.path.join(self.__engine_dir, "fps.x86_64")
+            engine_path = os.path.join(self.__engine_dir, entry_point)
             os.system(f"chmod +x {engine_path}")
             cmd = f"{engine_path} -IP:{self.__server_ip} -PORT:{self.__server_port}"
         elif sys.platform.startswith("win32"):
