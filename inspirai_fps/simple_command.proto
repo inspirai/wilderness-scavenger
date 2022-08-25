@@ -1,0 +1,315 @@
+// Copyright 2015 gRPC authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+package fps_command;
+
+
+service Commander {
+  rpc Request_S2A_UpdateGame (S2A_Request_Data) returns (A2S_Reply_Data) {}
+}
+
+// -------------------------用到的数据类-------------------------------
+
+// 玩法模式
+enum GameModeType {
+    NAVIGATION_MODE = 0;  // 导航模式
+    SUP_GATHER_MODE = 1;  // 物资收集模式
+    SUP_BATTLE_MODE = 2;  // 物资战模式
+}
+
+message Vector3 {
+  optional float x = 1;
+  optional float y = 2;
+  optional float z = 3;
+}
+
+// 物资信息
+message SupplyInfo {
+  optional int32 supply_id = 1;
+  optional Vector3 supply_location = 2;
+  optional int32 supply_quantity = 3;
+}
+
+// 敌人信息
+message EnemyInfo {
+  optional Vector3 location = 1;
+  optional Vector3 move_dir = 2;
+  optional float move_speed = 3;
+  optional int32 hp = 4;
+  optional int32 enemy_id = 5;
+  optional bool is_respawn = 6;
+  optional bool is_invincible = 7;
+}
+
+// 游戏开始后传输观测数据作为request
+message Observation {
+  // 自身信息
+  optional int32 id = 1;  // Agent ID
+  optional Vector3 location = 2;  // 自身空间三维坐标
+  optional float pitch = 3;  // 绝对坐标俯仰角 [-90, 90] 规定水平方向为0
+  optional float yaw = 4;  // 绝对坐标偏航角 [-180, 180] 规定正北方向为0
+  optional int32 hp = 5;  // 血量 [0, 100]
+  optional Vector3 move_dir = 6;  // 3D空间中移动方向 -> 3d单位矢量
+  optional float move_speed = 7;  // 3D空间中移动速度
+  optional int32 num_gun_ammo = 8;  // 武器中剩余弹药数量
+  optional int32 num_pack_ammo = 9;  // 背包中剩余弹药数量
+  optional bool on_ground = 10;  // 是否处在地面上
+  optional bool is_fire = 11;  // 是否正在开火
+  optional bool is_reload = 12;  // 是否正在换弹药
+  optional bool hit_enemy = 13;  // 是否命中敌人
+  optional bool hit_by_enemy = 14;  // 是否被敌人击中
+  optional int32 hit_enemy_id = 15;  // 命中的敌人id
+  optional int32 hit_by_enemy_id = 16;  // 被谁击中的敌人id
+  optional bool can_pickup = 17;  // 当前是否可拾取物资
+  optional int32 num_supply = 18;  // 背包物资数量（非已经拾取的物资数量）
+  // 环境感知信息
+  repeated SupplyInfo supply_info_list = 19;  // 附件可见物资信息
+  repeated EnemyInfo enemy_info_list = 20;  // 附近可见敌人信息
+  optional bytes image = 21;  // agent第一人称视角画面
+  // 比赛状态信息
+  optional bool is_waiting_respawn = 22;  // 是否等待复活中
+  optional bool is_invincible = 23;  // 是否处于无敌状态
+}
+
+// -------------------------系统事件-------------------------------
+
+//游戏类型事件
+message Event_GameStart {
+	GameModeType gameMode = 1;
+}
+
+//物资刷新事件
+message Event_SupplyRefrsh {
+	Vector3 pos = 1;//位置
+	optional int32 count =2;//数量
+	optional int32 id =3;//刷新点ID
+}
+
+//结算事件
+message Event_Settle {
+   GameModeType gameMode = 1;
+   optional float elapsed_time = 2;
+   optional float move_distance = 3;
+   optional int32 supply_count = 4;
+   repeated Event_PlayerSettleInfo event_player_infos = 5;
+}
+
+message Event_PlayerSettleInfo {
+   optional int32 supply_count = 1;
+   optional int32 rank = 2;
+   optional float move_distance = 3;
+   optional int32 kill_count = 4;
+   optional int32 dead_count = 5;
+}
+
+// -------------------------Agent事件-------------------------------
+
+//Agent刷新
+message Event_AgentRefresh {
+	Vector3 pos = 1;//刷新位置
+}
+
+//Agent死亡
+message Event_AgentDead {
+	Vector3 pos = 1;//死亡位置
+}
+
+//Agent被攻击受到伤害
+message Event_AgentBeHited {
+	optional int32 damageValue = 1;//伤害值
+	optional int32 fire_id = 2;//射击者ID
+}
+
+//Agent获取物资的事件
+message Event_GetSupplySuccess {
+	optional int32 supply_id = 1;//物资ID
+	optional int32 supply_count = 2;//物资数量
+	Vector3 pos = 3;//捡到物资的位置
+}
+
+//Agent切换弹夹成功
+message Event_AgentReloadSuccess {
+	//类型不为空切换弹夹成功
+}
+
+//Agent事件
+message Event_Agent {
+	 optional int32 player_id = 1;//玩家ID
+	 optional int32 supply_num_rank = 2;//物资数量排名
+	 Event_AgentRefresh event_agent_refresh=3;//Agent刷新
+	 Event_AgentDead event_agent_dead=4;//Agent死亡
+	 Event_AgentBeHited event_agent_beHited=5;//Agent被攻击受到伤害
+	 Event_AgentReloadSuccess event_agent_reload_success=6;//Agent切换弹夹成功
+	 Event_GetSupplySuccess event_get_supply_success=7;//agent成功捡到物资
+}
+
+//系统事件
+message Event_System {
+	Event_GameStart event_game_start=1;//游戏开始事件
+	Event_SupplyRefrsh event_supplyrefrsh =2;//物资刷新事件
+	Event_Settle event_settle =3;//结算事件
+}
+
+//游戏事件
+message EventInfo {
+	int32 timeStep = 1;
+	Event_System event_system = 2;//系统事件
+	repeated Event_Agent event_agentInfos = 3;//agent事件列表
+}
+
+// AIServer 计算的动作指令，回传给环境端
+message AgentCommand {
+  optional int32 id = 1;  // Agent ID
+  optional float walk_dir = 2 ;  // 移动方向 [0, 360)
+  optional float walk_speed = 3 ;  // 移动速度 [0, SPEED_MAX]
+  optional bool jump = 4;  // 跳跃控制 [True/False]
+  optional float turn_left_right_delta = 5;  // 水平角度变化 [-DELTA_MAX, DELTA_MAX]
+  optional float look_up_down_delta = 6;  // 竖直角度变化 [-DELTA_MAX, DELTA_MAX]
+  optional bool shoot_gun = 7;  // 开枪 [True/False]
+  optional bool reload = 8;  // 换弹 [True/False]
+  optional bool collect = 9;  // 拾取 [True/False]
+}
+
+message SupplyInitData {
+	optional Vector3 supply_heatmap_center = 8;  // 物资分布热力图中心点位置
+	optional int32 supply_aboundance = 9;  // 物资分布丰富程度 [1, 100] 默认50
+	optional int32 supply_create_percent = 10;  // 野外刷出物资数量百分比
+	optional int32 supply_house_create_percent = 11;  // 室内刷出物资数量
+	optional int32 supply_grid_length = 12;  // 物资点格子长度(默认为3)
+	optional int32 supply_random_min = 13;  // 野外物资随机下限
+	optional int32 supply_random_max = 14;  // 野外物资随机上限
+	optional int32 supply_house_random_min = 15;  // 室内物资随机上限
+	optional int32 supply_house_random_max = 16;  // 室外物资随机下限
+}
+
+message SupplyRefreshData {
+	optional Vector3 supply_heatmap_center = 1;  // 物资分布热力图中心点位置
+	optional int32 supply_heatmap_radius = 2;  // 物资刷新范围半径 [1, 100] 默认50
+	optional int32 supply_refresh_time = 3;// 物资动态刷新时刻清单
+	optional int32 supply_create_percent = 4;  // 刷出物资数量百分比
+	optional int32 supply_house_create_percent = 5;  // 室内刷出物资数量百分比
+}
+
+// 算法端发送环境控制指令
+message GMCommand {
+  // 通用设置
+  optional int32 timeout = 1;  // 这一局的游戏时限(秒) 
+  optional GameModeType game_mode = 2;  // 游戏模式，上面三种之一
+  optional int32 time_scale = 3;  // 游戏运行得倍速，默认1代表每秒60个step，10每秒600个step
+  optional int32 map_id = 4;  // 地图编号
+  optional int32 random_seed = 5;  // 物资生成随机种子
+  optional int32 num_agents = 17;  // 这一局内的agent数量 -> 前两个模式默认为1
+  repeated AgentSetup agent_setups = 18;  // 所有或者部分agent的初始化设置参数 -> 前两个模式默认只包含一个agent_setup
+  optional bool is_record = 21;  // 是否保存这一局的录像
+  optional string replay_suffix = 22;  // 保存replay文件的名称后缀（replay名称格式：{mode}_{map_id}_{time_stamp}_{replay_suffix}.bin）
+  // 模式一：导航
+  optional Vector3 target_location = 6;  // 若使用随机目的地则可以忽略
+  optional float trigger_range = 7;  // 到达目标点的范围
+  // 模式二：物资收集
+  optional Vector3 supply_heatmap_center = 8;  // 物资分布热力图中心点位置
+  optional int32 supply_heatmap_radius = 9;  // 热力分布的标准差[1, 100] 默认50（长度）
+  optional int32 supply_create_percent = 10;  // 野外刷出物资数量百分比
+  optional int32 supply_house_create_percent = 11;  // 室内刷出物资数量百分比
+  optional int32 supply_grid_length = 12;  // 物资点格子长度(默认为3)
+  optional int32 supply_random_min = 13;  // 野外物资随机下限
+  optional int32 supply_random_max = 14;  // 野外物资随机上限
+  optional int32 supply_house_random_min = 15;  // 室内物资随机上限
+  optional int32 supply_house_random_max = 16;  // 室外物资随机下限
+  // 模式三：物资战
+  repeated SupplyRefreshData supply_refresh_datas = 19; // 物资热力中心刷新时刻表
+  optional int32 respawn_time = 20;  // 复活等待时间(单位：秒)
+  optional bool is_random_respawn_location = 23;  // 复活地点是否随机，默认否，复活地点使用agent_setups里面的start_location
+  optional int32 supply_loss_percent_when_dead = 24;  // 死亡时物资掉落百分比，默认0
+  // 额外选项
+  optional bool is_Open_Event = 25;//是否开启观测事件
+  optional float water_speed_decay = 26;  // 水里移动衰减系数
+  optional int32 invincible_time = 27; //复活时间
+}
+
+// 算法初始化AI时的信息，在A2S_InitGame里使用
+message AgentSetup {
+  optional int32 id = 1;  // Agent ID -> [0, NUM_AGENTS-1]
+  optional int32 hp = 2;  // Agent HP -> [0, 100]
+  optional int32 num_pack_ammo = 3;  // 初始背包弹药数量
+  optional int32 gun_capacity = 4;  // 弹夹容量
+  optional int32 attack_power = 5;  // 攻击力(伤害值) [0, 100] 默认20
+  optional Vector3 start_location = 6;  // 出生位置
+  optional string agent_name = 7;  // 参赛者名字 -> 用于观战模式显示
+}
+
+// -----------------------算法端与服务器交互协议------------------------
+enum GameState {
+  start = 0;  // 开始阶段，环境端传输空消息，基础环境初始化
+  reset = 1;  // 重置一局游戏，算法端传输GM指令，游戏参数初始化
+  update = 2;  // 更新下一步操作，环境端传输观测数据，算法端传输Agent控制指令
+  close = 3;  // 表示整个游戏结束，AIServer会断开连接
+  over = 4;  // 表示一局游戏结束，可以重新开下一局
+}
+
+// 环境端发送当前观测数据
+message S2A_Request_Data {
+  optional GameState game_state = 1;  // 当前局游戏是否结束，之后可以有下一局
+  optional int32 time_step = 2;  // 当前帧数
+  repeated Observation agent_obs_list = 3;  // 所有Agent的观测数据
+  EventInfo event_info=4;//Agent事件
+}
+
+// 算法端发送Agent控制操作
+message A2S_Reply_Data {
+  optional GameState game_state = 1;  // 重置游戏，开始新的一局
+  optional GMCommand gm_cmd = 2;  // 每局游戏只有唯一的全局GM指令，由算法端控制
+  repeated AgentCommand agent_cmd_list = 3;
+}
+
+message ReplayData {
+  optional string sceneName = 1;  // 重置游戏，开始新的一局
+  repeated A2S_Reply_Data replayDatas = 2;
+}
+
+//-----------------------客户端与服务器交互协议------------------------
+
+//客户端服务端执行握手
+message S2C_StartGame {
+  //无参协议，算法只要响应就行
+  optional int32 playMode=1;
+  optional int32 seed=2;//客户端收到消息后 根据随机数随机生成场景物，随机玩家出生位置
+}
+
+message C2S_StartGame{
+  //客户端响应信号 0客户端异常 1客户端环境良好
+  optional int32 singalCode=1;
+}
+
+message C2S_LoadingGame{
+  //optional  LoadingData loadingData = 1;
+}
+
+message S2C_LoadingGame{
+  optional bool isAgentInit = 1;//AI端初始胡是否完成
+  //repeated  LoadingData loadingData = 2;//所有真实玩家加载数据
+}
+
+message S2C_UpdateGameWorld {
+  //repeated SceneObj objs = 1;//初始化场景信息
+}
+
+message C2S_UpdatePalyerOperate {
+  AgentCommand agentCommands = 1;//玩家的操作信息
+  optional int32 playerId = 2;	//玩家ID
+}
+
+message S2C_GameOver {
+  //游戏结束
+}
