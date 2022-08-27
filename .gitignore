@@ -1,13 +1,11 @@
 *.log
-data/*
+debug/*
 *.pyc
-unity3d/fps_Data/StreamingAssets/*
 inspirai_fps.egg-info/*
 .vscode/*
 dist/*
 build/*
-docker_example
 examples/test*
-inspirai_fps/*.proto
 *.gif
 examples/save_replay.py
+benchmark/*

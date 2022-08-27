@@ -194,6 +194,7 @@ class AgentState:
         obs_data,
         ray_tracer,
         use_depth_map=False,
+        render_camera=False,
     ) -> None:
         self.position_x = obs_data.location.x
         self.position_y = obs_data.location.y
@@ -219,9 +220,8 @@ class AgentState:
         self.num_supply = obs_data.num_supply
         self.is_waiting_respawn = obs_data.is_waiting_respawn
         self.is_invincible = obs_data.is_invincible
-        self.camera_image = None
-        if len(obs_data.image) > 0:
-            self.camera_image = Image.open(io.BytesIO(obs_data.image))
+        if render_camera:
+            self.image_bytes = obs_data.image
 
         self.ray_tracer = ray_tracer
 
@@ -649,7 +649,8 @@ class Game:
 
         self.__GM.num_agents += 1
 
-    def set_agent_config(self,
+    def set_agent_config(
+        self,
         agent_id,
         health=100,
         num_pack_ammo=60,
@@ -657,7 +658,7 @@ class Game:
         attack=20,
     ):
         assert 0 <= agent_id < len(self.__GM.agent_setups)
-        
+
         for agent in self.__GM.agent_setups:
             if agent.id == agent_id:
                 agent.hp = health
@@ -754,21 +755,23 @@ class Game:
         self.request_queue.get()  # the first request is only used to activate the server
         print("Unity3D connected ...")
 
-    def get_state(self, agent_id=0) -> AgentState:
+    def get_state(self, agent_id=0, render_camera=False) -> AgentState:
         for obs_data in self.__latest_request.agent_obs_list:
             if obs_data.id == agent_id:
                 return AgentState(
                     obs_data,
                     self.__ray_tracer,
                     self.__use_depth_map,
+                    render_camera,
                 )
+        return None
 
-    def get_state_all(self) -> Dict[int, AgentState]:
+    def get_state_all(self, render_camera=False) -> Dict[int, AgentState]:
         state_dict = {}
         for obs_data in self.__latest_request.agent_obs_list:
             agent_id = obs_data.id
             state_dict[agent_id] = AgentState(
-                obs_data, self.__ray_tracer, self.__use_depth_map
+                obs_data, self.__ray_tracer, self.__use_depth_map, render_camera
             )
         return state_dict
 
